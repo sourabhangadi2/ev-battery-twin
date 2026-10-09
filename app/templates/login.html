@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EV Battery Digital Twin — Operator Auth Portal</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <!-- Custom CSS Stylesheet -->
+    <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='img/logo.jpg') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/logo.jpg') }}">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Space Grotesk', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        primary: '#00f2fe',
+                        border: 'rgba(0, 242, 254, 0.15)',
+                        card: '#0b1320',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="min-h-screen bg-[#05080c] text-gray-100 flex items-center justify-center p-4 lg:p-8 relative overflow-x-hidden font-sans">
+
+    <!-- Glowing Background Lights -->
+    <div class="absolute -top-40 -left-40 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none"></div>
+    <div class="absolute -bottom-40 -right-40 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px] pointer-events-none"></div>
+
+    <!-- MAIN FLIPKART / AMAZON DUAL-SPLIT CONTAINER -->
+    <div class="w-full max-w-4xl bg-[#0b1320] border border-primary/20 rounded-2xl shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-12 min-h-[560px] relative z-10">
+        
+        <!-- LEFT SIDE: FLIPKART STYLE FEATURE BRANDING PANEL (5 cols) -->
+        <div class="md:col-span-5 bg-gradient-to-b from-[#003853] via-[#041d30] to-[#020b14] p-8 flex flex-col justify-between border-b md:border-b-0 md:border-r border-primary/20 relative overflow-hidden">
+            <!-- Decorative wave & grid overlay -->
+            <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,242,254,0.15),transparent_60%)] pointer-events-none"></div>
+            
+            <div class="relative z-10">
+                <!-- Portal Logo & Brand Header -->
+                <div class="inline-flex items-center gap-3 bg-black/40 backdrop-blur-md px-4 py-2 rounded-full border border-cyan-400/30 mb-6">
+                    <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="EV Battery Logo" class="h-8 w-8 rounded-lg border border-cyan-400/50 shadow-[0_0_10px_rgba(0,242,254,0.4)] object-cover">
+                    <span class="text-xs font-bold text-white uppercase tracking-wider">EV Battery Twin OS</span>
+                </div>
+
+                <h2 class="text-2xl font-extrabold text-white leading-tight tracking-tight">
+                    Welcome Operator
+                </h2>
+                <p class="text-xs text-gray-300 mt-2 leading-relaxed font-sans">
+                    Register or sign in to get access to real-time EV battery telemetry, self-healing protection rules, ESP32 hardware actuators & live siren alerts.
+                </p>
+
+                <!-- Feature bullet list like Flipkart/Amazon onboarding -->
+                <div class="mt-8 space-y-4 font-sans text-xs">
+                    <div class="flex items-start gap-3 text-gray-200">
+                        <div class="h-6 w-6 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center shrink-0 mt-0.5 text-primary">
+                            <i class="fa-solid fa-shield-halved text-xs"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-white text-xs">Self-Healing Simulator</div>
+                            <div class="text-[11px] text-gray-400">Automatic relay disconnect & cooling fan triggers under thermal overload.</div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-3 text-gray-200">
+                        <div class="h-6 w-6 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center shrink-0 mt-0.5 text-emerald-400">
+                            <i class="fa-solid fa-volume-high text-xs"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-white text-xs">Real Alarm Buzzers</div>
+                            <div class="text-[11px] text-gray-400">Audible siren frequencies for Overheat & Overcurrent faults.</div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-3 text-gray-200">
+                        <div class="h-6 w-6 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center shrink-0 mt-0.5 text-cyan-400">
+                            <i class="fa-solid fa-microchip text-xs"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-white text-xs">ESP32 Hardware Sync</div>
+                            <div class="text-[11px] text-gray-400">Full two-way communication between physical microcontroller & web twin.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom illustration badge -->
+            <div class="relative z-10 pt-6 border-t border-white/10 mt-6 flex items-center justify-between text-[10px] text-gray-400 font-mono">
+                <span class="flex items-center gap-1.5 text-emerald-400"><i class="fa-solid fa-lock"></i> 256-Bit SSL Encrypted</span>
+                <span>v2.5 Release</span>
+            </div>
+        </div>
+
+        <!-- RIGHT SIDE: FLIPKART / AMAZON STYLE FORM PANEL (7 cols) -->
+        <div class="md:col-span-7 p-6 lg:p-10 flex flex-col justify-between bg-[#080d16]">
+            
+            <div>
+                <!-- Dynamic First-Time Registration Notification Banner -->
+                <div id="first-time-banner" class="hidden mb-5 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2 font-sans shadow-md animate-bounce">
+                    <i class="fa-solid fa-circle-exclamation text-amber-400 text-base shrink-0"></i>
+                    <span><strong>1st Time Visitor?</strong> Please complete <strong>Registration</strong> first to create your operator account before logging into the main page.</span>
+                </div>
+
+                <!-- Flashed alert messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, msg in messages %}
+                            <div class="p-3 mb-5 rounded-lg text-xs text-center border font-mono flex items-center justify-center gap-2 {% if category == 'success' %}bg-emerald-500/10 text-emerald-400 border-emerald-500/30{% elif category == 'info' %}bg-cyan-500/10 text-cyan-400 border-cyan-500/30{% else %}bg-red-500/10 text-red-400 border-red-500/30{% endif %}" role="alert">
+                                <i class="fa-solid {% if category == 'success' %}fa-circle-check{% elif category == 'info' %}fa-circle-info{% else %}fa-triangle-exclamation{% endif %}"></i>
+                                <span>{{ msg }}</span>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <!-- Flipkart-style Top Auth Tabs -->
+                <div class="flex border-b border-white/10 mb-6 font-sans">
+                    <button type="button" id="tab-btn-login" onclick="switchAuthTab('login')" class="flex-1 pb-3 text-sm font-bold uppercase tracking-wider transition-all duration-300 border-b-2 text-primary border-primary flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-right-to-bracket"></i> Login
+                    </button>
+                    <button type="button" id="tab-btn-register" onclick="switchAuthTab('register')" class="flex-1 pb-3 text-sm font-bold uppercase tracking-wider transition-all duration-300 border-b-2 text-gray-400 border-transparent hover:text-white flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-user-plus"></i> Registration
+                    </button>
+                </div>
+
+                <!-- LOGIN FORM -->
+                <div id="login-section" class="transition-all duration-300">
+                    <div class="mb-5">
+                        <h3 class="text-xl font-bold text-white">Sign In</h3>
+                        <p class="text-xs text-gray-400 mt-0.5">Enter your email & password to access the main dashboard.</p>
+                    </div>
+
+                    <form method="POST" action="{{ url_for('main.login') }}" class="space-y-4" novalidate>
+                        {{ login_form.hidden_tag() }}
+
+                        <!-- Email -->
+                        <div>
+                            <label for="login-email" class="block text-xs uppercase tracking-wider text-gray-300 font-semibold mb-1">Email Address *</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-500">
+                                    <i class="fa-solid fa-envelope text-xs"></i>
+                                </span>
+                                {{ login_form.email(id="login-email", class="w-full bg-black/60 border border-border rounded-lg pl-10 pr-3 py-2.5 text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all", placeholder="operator@example.com", required=true, type="email") }}
+                            </div>
+                            {% if login_form.email.errors %}
+                                <div class="text-red-400 text-[11px] mt-1 font-mono">
+                                    {% for error in login_form.email.errors %}
+                                        <p><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ error }}</p>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Password -->
+                        <div>
+                            <label for="login-password" class="block text-xs uppercase tracking-wider text-gray-300 font-semibold mb-1">Password *</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-500">
+                                    <i class="fa-solid fa-lock text-xs"></i>
+                                </span>
+                                {{ login_form.password(id="login-password", class="w-full bg-black/60 border border-border rounded-lg pl-10 pr-10 py-2.5 text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all", placeholder="••••••••", required=true) }}
+                                <button type="button" onclick="togglePasswordVisibility('login-password', this)" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-primary transition-colors">
+                                    <i class="fa-solid fa-eye text-xs"></i>
+                                </button>
+                            </div>
+                            {% if login_form.password.errors %}
+                                <div class="text-red-400 text-[11px] mt-1 font-mono">
+                                    {% for error in login_form.password.errors %}
+                                        <p><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ error }}</p>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Remember session -->
+                        <div class="flex items-center justify-between pt-1">
+                            <div class="flex items-center gap-2">
+                                {{ login_form.remember(class="h-4 w-4 rounded bg-black/50 border border-border text-primary focus:ring-primary accent-primary cursor-pointer") }}
+                                <label class="text-xs text-gray-400 cursor-pointer select-none" for="remember">
+                                    Keep me signed in
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Flipkart/Amazon style Primary Button -->
+                        <button type="submit" class="w-full py-3 rounded-lg bg-gradient-to-r from-cyan-400 to-primary text-gray-950 font-bold text-xs uppercase tracking-wider hover:opacity-95 hover:shadow-[0_0_20px_rgba(0,242,254,0.35)] transition-all cursor-pointer shadow-lg mt-2 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-right-to-bracket text-sm"></i> Login
+                        </button>
+                    </form>
+                </div>
+
+                <!-- REGISTRATION FORM -->
+                <div id="register-section" class="hidden transition-all duration-300">
+                    <div class="mb-5">
+                        <h3 class="text-xl font-bold text-white">Registration</h3>
+                        <p class="text-xs text-gray-400 mt-0.5">Register as an authorized Digital Twin Operator.</p>
+                    </div>
+
+                    <form method="POST" action="{{ url_for('main.register') }}" class="space-y-3.5" id="register-form" onsubmit="markRegisteredInStorage()" novalidate>
+                        {{ register_form.hidden_tag() }}
+
+                        <!-- Full Name -->
+                        <div>
+                            <label for="register-name" class="block text-xs uppercase tracking-wider text-gray-300 font-semibold mb-1">Full Operator Name *</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-500">
+                                    <i class="fa-solid fa-user text-xs"></i>
+                                </span>
+                                {{ register_form.name(id="register-name", class="w-full bg-black/60 border border-border rounded-lg pl-10 pr-3 py-2 text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all", placeholder="John Doe", required=true, minlength="2") }}
+                            </div>
+                            {% if register_form.name.errors %}
+                                <div class="text-red-400 text-[11px] mt-1 font-mono">
+                                    {% for error in register_form.name.errors %}
+                                        <p><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ error }}</p>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Email -->
+                        <div>
+                            <label for="register-email" class="block text-xs uppercase tracking-wider text-gray-300 font-semibold mb-1">Email Address *</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-500">
+                                    <i class="fa-solid fa-envelope text-xs"></i>
+                                </span>
+                                {{ register_form.email(id="register-email", class="w-full bg-black/60 border border-border rounded-lg pl-10 pr-3 py-2 text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all", placeholder="operator@example.com", required=true, type="email") }}
+                            </div>
+                            {% if register_form.email.errors %}
+                                <div class="text-red-400 text-[11px] mt-1 font-mono">
+                                    {% for error in register_form.email.errors %}
+                                        <p><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ error }}</p>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Password -->
+                        <div>
+                            <label for="register-password" class="block text-xs uppercase tracking-wider text-gray-300 font-semibold mb-1">Password * (min 8 chars)</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-500">
+                                    <i class="fa-solid fa-lock text-xs"></i>
+                                </span>
+                                {{ register_form.password(id="register-password", class="w-full bg-black/60 border border-border rounded-lg pl-10 pr-10 py-2 text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all", placeholder="••••••••", required=true, minlength="8") }}
+                                <button type="button" onclick="togglePasswordVisibility('register-password', this)" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-primary transition-colors">
+                                    <i class="fa-solid fa-eye text-xs"></i>
+                                </button>
+                            </div>
+                            {% if register_form.password.errors %}
+                                <div class="text-red-400 text-[11px] mt-1 font-mono">
+                                    {% for error in register_form.password.errors %}
+                                        <p><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ error }}</p>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Confirm Password -->
+                        <div>
+                            <label for="register-confirm-password" class="block text-xs uppercase tracking-wider text-gray-300 font-semibold mb-1">Confirm Password *</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-500">
+                                    <i class="fa-solid fa-shield-halved text-xs"></i>
+                                </span>
+                                {{ register_form.confirm_password(id="register-confirm-password", class="w-full bg-black/60 border border-border rounded-lg pl-10 pr-10 py-2 text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all", placeholder="••••••••", required=true, minlength="8") }}
+                                <button type="button" onclick="togglePasswordVisibility('register-confirm-password', this)" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-primary transition-colors">
+                                    <i class="fa-solid fa-eye text-xs"></i>
+                                </button>
+                            </div>
+                            <div id="match-feedback" class="text-[11px] mt-1 font-mono hidden"></div>
+                            {% if register_form.confirm_password.errors %}
+                                <div class="text-red-400 text-[11px] mt-1 font-mono">
+                                    {% for error in register_form.confirm_password.errors %}
+                                        <p><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ error }}</p>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Register Button -->
+                        <button type="submit" class="w-full py-3 rounded-lg bg-gradient-to-r from-emerald-400 to-teal-400 text-gray-950 font-bold text-xs uppercase tracking-wider hover:opacity-95 hover:shadow-[0_0_20px_rgba(16,185,129,0.35)] transition-all cursor-pointer shadow-lg mt-2 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-user-check text-sm"></i> Complete Registration
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Switch Links -->
+            <div class="mt-6 pt-4 border-t border-white/10 font-sans text-xs text-center">
+                <div id="login-footer-link">
+                    <span class="text-gray-400">First time visiting?</span>
+                    <button type="button" onclick="switchAuthTab('register')" class="text-primary hover:underline font-bold ml-1">Do Registration First</button>
+                </div>
+                <div id="register-footer-link" class="hidden">
+                    <span class="text-gray-400">Already registered?</span>
+                    <button type="button" onclick="switchAuthTab('login')" class="text-primary hover:underline font-bold ml-1">Log In Here</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Client side tab switching & logic script -->
+    <script>
+        function switchAuthTab(tab) {
+            const loginSec = document.getElementById('login-section');
+            const regSec = document.getElementById('register-section');
+            const loginBtn = document.getElementById('tab-btn-login');
+            const regBtn = document.getElementById('tab-btn-register');
+            const loginFooter = document.getElementById('login-footer-link');
+            const regFooter = document.getElementById('register-footer-link');
+
+            if (tab === 'register') {
+                loginSec.classList.add('hidden');
+                regSec.classList.remove('hidden');
+                loginFooter.classList.add('hidden');
+                regFooter.classList.remove('hidden');
+
+                regBtn.className = "flex-1 pb-3 text-sm font-bold uppercase tracking-wider transition-all duration-300 border-b-2 text-primary border-primary flex items-center justify-center gap-2";
+                loginBtn.className = "flex-1 pb-3 text-sm font-bold uppercase tracking-wider transition-all duration-300 border-b-2 text-gray-400 border-transparent hover:text-white flex items-center justify-center gap-2";
+            } else {
+                regSec.classList.add('hidden');
+                loginSec.classList.remove('hidden');
+                regFooter.classList.add('hidden');
+                loginFooter.classList.remove('hidden');
+
+                loginBtn.className = "flex-1 pb-3 text-sm font-bold uppercase tracking-wider transition-all duration-300 border-b-2 text-primary border-primary flex items-center justify-center gap-2";
+                regBtn.className = "flex-1 pb-3 text-sm font-bold uppercase tracking-wider transition-all duration-300 border-b-2 text-gray-400 border-transparent hover:text-white flex items-center justify-center gap-2";
+            }
+        }
+
+        function markRegisteredInStorage() {
+            localStorage.setItem('ev_twin_has_registered', 'true');
+        }
+
+        function togglePasswordVisibility(fieldId, btn) {
+            const field = document.getElementById(fieldId);
+            const icon = btn.querySelector('i');
+            if (field.type === 'password') {
+                field.type = 'text';
+                icon.className = 'fa-solid fa-eye-slash text-xs text-primary';
+            } else {
+                field.type = 'password';
+                icon.className = 'fa-solid fa-eye text-xs text-gray-500';
+            }
+        }
+
+        // Real-time password matching feedback
+        const regPwd = document.getElementById('register-password');
+        const regConfirm = document.getElementById('register-confirm-password');
+        const matchFeedback = document.getElementById('match-feedback');
+
+        function validateMatch() {
+            if (!regConfirm.value) {
+                matchFeedback.className = 'text-[11px] mt-1 font-mono hidden';
+                return;
+            }
+            if (regPwd.value === regConfirm.value) {
+                matchFeedback.innerText = '✓ Passwords match';
+                matchFeedback.className = 'text-[11px] mt-1 font-mono text-emerald-400 block';
+            } else {
+                matchFeedback.innerText = '✗ Passwords do not match';
+                matchFeedback.className = 'text-[11px] mt-1 font-mono text-red-400 block';
+            }
+        }
+
+        if (regPwd && regConfirm) {
+            regPwd.addEventListener('input', validateMatch);
+            regConfirm.addEventListener('input', validateMatch);
+        }
+
+        // Check if user is visiting for the 1st time
+        document.addEventListener('DOMContentLoaded', async function() {
+            const initialTab = "{{ active_tab }}";
+            const urlParams = new URLSearchParams(window.location.search);
+            const isRegisteredParam = urlParams.get('registered');
+
+            if (isRegisteredParam === '1') {
+                localStorage.setItem('ev_twin_has_registered', 'true');
+            }
+
+            const hasLocallyRegistered = localStorage.getItem('ev_twin_has_registered') === 'true';
+
+            try {
+                const res = await fetch('/check_auth_status');
+                const data = await res.json();
+
+                if (!hasLocallyRegistered && !data.has_registered_user && initialTab !== 'login') {
+                    const banner = document.getElementById('first-time-banner');
+                    if (banner) banner.classList.remove('hidden');
+                    switchAuthTab('register');
+                } else {
+                    switchAuthTab(initialTab || 'login');
+                }
+            } catch (err) {
+                if (!hasLocallyRegistered) {
+                    switchAuthTab('register');
+                } else {
+                    switchAuthTab(initialTab || 'login');
+                }
+            }
+        });
+    </script>
+</body>
+</html>

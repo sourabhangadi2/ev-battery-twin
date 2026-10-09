@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>EV Battery Digital Twin — Live Mobile Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Space Grotesk', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        primary: '#00f2fe',
+                        border: 'rgba(0, 242, 254, 0.12)',
+                        card: 'rgba(21, 38, 52, 0.8)',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Custom layout CSS rules -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap');
+        
+        body {
+            background-color: #05080c;
+            background-image: 
+                radial-gradient(circle at 10% 10%, rgba(0, 242, 254, 0.08) 0%, transparent 45%),
+                radial-gradient(circle at 90% 10%, rgba(16, 185, 129, 0.04) 0%, transparent 45%);
+            background-attachment: fixed;
+            color: #f3f4f6;
+        }
+
+        .glass-card {
+            background: linear-gradient(135deg, rgba(21, 38, 52, 0.75) 0%, rgba(11, 28, 42, 0.75) 100%);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 242, 254, 0.12);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35);
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(0, 242, 254, 0.25);
+            box-shadow: 0 12px 40px 0 rgba(0, 242, 254, 0.08);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 160px;
+            width: 100%;
+        }
+
+        @keyframes pulse-light {
+            from { opacity: 0.4; box-shadow: 0 0 4px currentColor; }
+            to { opacity: 1; box-shadow: 0 0 16px currentColor; }
+        }
+
+        .pulse-dot {
+            animation: pulse-light 1.5s infinite alternate;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans">
+    
+    <!-- Sticky Navigation Header -->
+    <header class="sticky top-0 z-20 border-b border-border/60 bg-[#05080c]/80 backdrop-blur-xl">
+        <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 lg:px-8">
+            <div class="flex items-center gap-3">
+                <div class="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary border border-primary/20">
+                    <i class="fa-solid fa-battery-three-quarters text-sm"></i>
+                </div>
+                <div>
+                    <div class="text-sm font-semibold leading-tight text-white">EV Battery Digital Twin</div>
+                    <div class="text-[10px] uppercase tracking-widest text-gray-400">Self-Healing Simulator</div>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-4 font-mono text-xs">
+                <div class="flex items-center gap-1.5 bg-[#080d16] px-2.5 py-1 rounded border border-border">
+                    <span class="pulse-dot inline-block h-2 w-2 rounded-full bg-emerald-400" id="esp32-status-dot"></span>
+                    <i class="fa-solid fa-microchip text-gray-400"></i>
+                    <span class="text-gray-300">ESP32</span>
+                </div>
+                <div class="flex items-center gap-1.5 bg-[#080d16] px-2.5 py-1 rounded border border-border">
+                    <span class="pulse-dot inline-block h-2 w-2 rounded-full bg-emerald-400" id="wifi-status-dot"></span>
+                    <i class="fa-solid fa-wifi text-gray-400"></i>
+                    <span class="text-gray-300">Wi-Fi</span>
+                </div>
+                <span class="hidden text-gray-400 sm:inline" id="header-clock">--:--:-- PM</span>
+                <span class="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider font-sans">Live Cloud</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8">
+        
+        <!-- Alerts Banner area -->
+        <div id="alerts-container" class="mb-4 space-y-3">
+            <!-- Simulated safety warnings -->
+        </div>
+
+        <!-- HERO STATUS BOX -->
+        <div class="glass-card relative overflow-hidden p-6 bg-gradient-to-br from-primary/10 to-transparent">
+            <div class="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+                <div>
+                    <div class="text-xs uppercase tracking-[0.2em] text-gray-400">System Status</div>
+                    <div class="mt-1 flex items-center gap-3 text-2xl font-semibold text-primary">
+                        <span class="pulse-dot inline-block h-3 w-3 rounded-full bg-primary" id="status-pulse"></span>
+                        <span id="status-text">Nominal</span>
+                    </div>
+                    <p class="mt-1 text-sm text-gray-400" id="status-desc">Digital twin reconciling sensor stream from ESP32 every second.</p>
+                </div>
+                
+                <div class="grid grid-cols-3 gap-3 font-mono text-sm">
+                    <div class="rounded-lg border border-border bg-black/30 px-3 py-2">
+                        <div class="text-[10px] uppercase tracking-widest text-gray-400">Cycles</div>
+                        <div class="text-sm font-semibold text-white" id="meta-cycles">142</div>
+                    </div>
+                    <div class="rounded-lg border border-border bg-black/30 px-3 py-2">
+                        <div class="text-[10px] uppercase tracking-widest text-gray-400">Est. life</div>
+                        <div class="text-sm font-semibold text-white" id="meta-life">7.4 yr</div>
+                    </div>
+                    <div class="rounded-lg border border-border bg-black/30 px-3 py-2">
+                        <div class="text-[10px] uppercase tracking-widest text-gray-400">LED</div>
+                        <div class="text-sm font-semibold text-primary" id="meta-led">GREEN</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6-COLUMN PARAMETERS METRICS -->
+        <section class="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+            <div class="glass-card p-4">
+                <div class="flex items-center justify-between text-gray-400">
+                    <span class="text-[11px] uppercase tracking-widest">Temperature</span>
+                    <span class="text-primary"><i class="fa-solid fa-thermometer"></i></span>
+                </div>
+                <div class="mt-2 flex items-baseline gap-1 font-mono text-white">
+                    <span class="text-2xl font-semibold tabular-nums" id="metric-temp">28.0</span>
+                    <span class="text-xs text-gray-400">°C</span>
+                </div>
+            </div>
+
+            <div class="glass-card p-4">
+                <div class="flex items-center justify-between text-gray-400">
+                    <span class="text-[11px] uppercase tracking-widest">Voltage</span>
+                    <span class="text-primary"><i class="fa-solid fa-zap"></i></span>
+                </div>
+                <div class="mt-2 flex items-baseline gap-1 font-mono text-white">
+                    <span class="text-2xl font-semibold tabular-nums" id="metric-voltage">3.90</span>
+                    <span class="text-xs text-gray-400">V</span>
+                </div>
+            </div>
+
+            <div class="glass-card p-4">
+                <div class="flex items-center justify-between text-gray-400">
+                    <span class="text-[11px] uppercase tracking-widest">Current</span>
+                    <span class="text-primary"><i class="fa-solid fa-activity"></i></span>
+                </div>
+                <div class="mt-2 flex items-baseline gap-1 font-mono text-white">
+                    <span class="text-2xl font-semibold tabular-nums" id="metric-current">1.20</span>
+                    <span class="text-xs text-gray-400">A</span>
+                </div>
+            </div>
+
+            <div class="glass-card p-4">
+                <div class="flex items-center justify-between text-gray-400">
+                    <span class="text-[11px] uppercase tracking-widest">State of Charge</span>
+                    <span class="text-primary"><i class="fa-solid fa-battery-three-quarters"></i></span>
+                </div>
+                <div class="mt-2 flex items-baseline gap-1 font-mono text-white">
+                    <span class="text-2xl font-semibold tabular-nums" id="metric-soc">82.0</span>
+                    <span class="text-xs text-gray-400">%</span>
+                </div>
+            </div>
+
+            <div class="glass-card p-4">
+                <div class="flex items-center justify-between text-gray-400">
+                    <span class="text-[11px] uppercase tracking-widest">State of Health</span>
+                    <span class="text-primary"><i class="fa-solid fa-heart"></i></span>
+                </div>
+                <div class="mt-2 flex items-baseline gap-1 font-mono text-white">
+                    <span class="text-2xl font-semibold tabular-nums" id="metric-soh">96.0</span>
+                    <span class="text-xs text-gray-400">%</span>
+                </div>
+            </div>
+
+            <div class="glass-card p-4">
+                <div class="flex items-center justify-between text-gray-400">
+                    <span class="text-[11px] uppercase tracking-widest">Battery Health</span>
+                    <span class="text-primary"><i class="fa-solid fa-gauge"></i></span>
+                </div>
+                <div class="mt-2 flex items-baseline gap-1 font-mono text-white">
+                    <span class="text-2xl font-semibold tabular-nums" id="metric-health">94</span>
+                    <span class="text-xs text-gray-400">/100</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- VISUALIZATION, ACTUATORS & RULES CHECKLIST -->
+        <section class="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+            
+            <!-- Battery Cell Fluid fill -->
+            <div class="glass-card p-5">
+                <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
+                    <span class="text-primary"><i class="fa-solid fa-battery-three-quarters"></i></span>Battery Visualization
+                </div>
+                <div class="mt-4 flex items-center gap-5">
+                    <div class="relative flex h-44 w-24 flex-col-reverse overflow-hidden rounded-xl border-2 border-border bg-black/40">
+                        <div class="w-full transition-all duration-700 ease-out" style="height:82%; background:linear-gradient(180deg, var(--color-primary, #00f2fe), var(--color-primary, #00f2fe) 88%)" id="battery-fill-bar"></div>
+                        
+                        <div class="absolute inset-0 grid grid-rows-5">
+                            <div class="border-t border-border/20"></div>
+                            <div class="border-t border-border/20"></div>
+                            <div class="border-t border-border/20"></div>
+                            <div class="border-t border-border/20"></div>
+                            <div class="border-t border-border/20"></div>
+                        </div>
+                        <div class="absolute left-1/2 top-2 -translate-x-1/2 text-xs font-mono font-semibold text-white/90" id="battery-fill-percent">82%</div>
+                    </div>
+                    
+                    <div class="flex-1 space-y-2 font-mono text-xs text-white">
+                        <div class="flex justify-between border-b border-border/20 pb-1">
+                            <span class="text-gray-400 font-sans">State of Charge</span><span id="txt-soc">82.0 %</span>
+                        </div>
+                        <div class="flex justify-between border-b border-border/20 pb-1">
+                            <span class="text-gray-400 font-sans">State of Health</span><span id="txt-soh">96.0 %</span>
+                        </div>
+                        <div class="flex justify-between border-b border-border/20 pb-1">
+                            <span class="text-gray-400 font-sans">Voltage</span><span id="txt-voltage">3.90 V</span>
+                        </div>
+                        <div class="flex justify-between border-b border-border/20 pb-1">
+                            <span class="text-gray-400 font-sans">Current</span><span id="txt-current">1.20 A</span>
+                        </div>
+                        <div class="flex justify-between border-b border-border/20 pb-1">
+                            <span class="text-gray-400 font-sans">Temperature</span><span id="txt-temp">28.0 °C</span>
+                        </div>
+                        <div class="flex justify-between border-b border-border/20 pb-1">
+                            <span class="text-gray-400 font-sans">Load</span><span id="txt-load">Connected</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hardware Actuators list -->
+            <div class="glass-card p-5">
+                <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
+                    <span class="text-primary"><i class="fa-solid fa-power-off"></i></span>Hardware Actuators
+                </div>
+                <div class="mt-4 grid grid-cols-2 gap-3">
+                    <div class="flex items-center gap-3 rounded-lg p-3 ring-1 bg-black/10 text-gray-300 ring-border" id="card-actuator-fan">
+                        <div class="grid h-9 w-9 place-items-center rounded-md bg-black/30">
+                            <i class="fa-solid fa-fan text-sm text-primary"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="text-[10px] uppercase tracking-widest text-gray-400">Cooling Fan</div>
+                            <div class="font-mono text-sm font-semibold" id="val-actuator-fan">OFF</div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-3 rounded-lg p-3 ring-1 bg-primary/20 text-primary ring-primary/40" id="card-actuator-relay">
+                        <div class="grid h-9 w-9 place-items-center rounded-md bg-black/30">
+                            <i class="fa-solid fa-bolt text-sm"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="text-[10px] uppercase tracking-widest text-gray-400">Relay (Load)</div>
+                            <div class="font-mono text-sm font-semibold" id="val-actuator-relay">ON</div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 rounded-lg p-3 ring-1 bg-black/10 text-gray-300 ring-border" id="card-actuator-buzzer">
+                        <div class="grid h-9 w-9 place-items-center rounded-md bg-black/30">
+                            <i class="fa-solid fa-volume-high text-sm"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="text-[10px] uppercase tracking-widest text-gray-400">Buzzer</div>
+                            <div class="font-mono text-sm font-semibold" id="val-actuator-buzzer">OFF</div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 rounded-lg bg-black/10 p-3 ring-1 ring-border">
+                        <div class="flex flex-col gap-1.5" id="led-container">
+                            <div class="h-3.5 w-3.5 rounded-full transition-all opacity-25" style="background-color:#ef4444;" id="led-red"></div>
+                            <div class="h-3.5 w-3.5 rounded-full transition-all opacity-25" style="background-color:#f59e0b;" id="led-yellow"></div>
+                            <div class="h-3.5 w-3.5 rounded-full transition-all opacity-100 shadow-[0_0_10px_#10b981]" style="background-color:#10b981;" id="led-green"></div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] uppercase tracking-widest text-gray-400">Status LEDs</div>
+                            <div class="font-mono text-sm font-semibold text-white" id="val-actuator-led">GREEN</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Self-Healing Rules compliance -->
+            <div class="glass-card p-5">
+                <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
+                    <span class="text-primary"><i class="fa-solid fa-heart-pulse"></i></span>Self-Healing Logic
+                </div>
+                <ul class="mt-4 space-y-2.5 font-mono text-xs text-white">
+                    <li class="flex items-center gap-2">
+                        <span class="h-2 w-2 rounded-full bg-primary" id="chk-dot-temp-warn"></span>
+                        <span>Temp &lt; 45°C (warn)</span>
+                        <span class="ml-auto text-gray-400 font-bold" id="chk-lbl-temp-warn">OK</span>
+                    </li>
+                    <li class="flex items-center gap-2">
+                        <span class="h-2 w-2 rounded-full bg-primary" id="chk-dot-temp-crit"></span>
+                        <span>Temp &lt; 55°C (crit)</span>
+                        <span class="ml-auto text-gray-400 font-bold" id="chk-lbl-temp-crit">OK</span>
+                    </li>
+                    <li class="flex items-center gap-2">
+                        <span class="h-2 w-2 rounded-full bg-primary" id="chk-dot-volt"></span>
+                        <span>Voltage in 3.2–4.25 V</span>
+                        <span class="ml-auto text-gray-400 font-bold" id="chk-lbl-volt">OK</span>
+                    </li>
+                    <li class="flex items-center gap-2">
+                        <span class="h-2 w-2 rounded-full bg-primary" id="chk-dot-current"></span>
+                        <span>Current ≤ 5 A</span>
+                        <span class="ml-auto text-gray-400 font-bold" id="chk-lbl-current">OK</span>
+                    </li>
+                </ul>
+                <p class="mt-4 text-[11px] leading-relaxed text-gray-400">When a rule trips, the twin auto-commands the ESP32 — fan ON, relay OPEN to isolate the load, or buzzer + red LED for a critical fault.</p>
+            </div>
+        </section>
+
+        <!-- CHART GRAPHS -->
+        <section class="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <div class="glass-card p-5">
+                <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400 mb-3">
+                    <span class="text-primary"><i class="fa-solid fa-chart-line"></i></span>Temperature (°C)
+                </div>
+                <div class="chart-container">
+                    <canvas id="tempChart"></canvas>
+                </div>
+                <div class="mt-2 flex gap-3 font-mono text-[10px] text-gray-400">
+                    <span>warn ≥ 45</span><span class="text-red-400">crit ≥ 55</span>
+                </div>
+            </div>
+            
+            <div class="glass-card p-5">
+                <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400 mb-3">
+                    <span class="text-primary"><i class="fa-solid fa-chart-line"></i></span>Voltage (V)
+                </div>
+                <div class="chart-container">
+                    <canvas id="voltageChart"></canvas>
+                </div>
+                <div class="mt-2 flex gap-3 font-mono text-[10px] text-gray-400">
+                    <span>range: 3.2V - 4.25V</span>
+                </div>
+            </div>
+
+            <div class="glass-card p-5">
+                <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400 mb-3">
+                    <span class="text-primary"><i class="fa-solid fa-chart-line"></i></span>Current (A)
+                </div>
+                <div class="chart-container">
+                    <canvas id="currentChart"></canvas>
+                </div>
+                <div class="mt-2 flex gap-3 font-mono text-[10px] text-gray-400">
+                    <span class="text-red-400">crit ≥ 5</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- MANUAL CONTROLS, INJECTORS & EVENT LOGS -->
+        <section class="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+            
+            <!-- Manual actuator selector controls -->
+            <div class="glass-card p-5">
+                <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400 mb-4">
+                    <span class="text-primary"><i class="fa-solid fa-sliders"></i></span>Manual Commands
+                </div>
+                <div class="space-y-4 text-sm text-white">
+                    <div>
+                        <div class="mb-1 text-[10px] uppercase tracking-widest text-gray-400 font-bold">Cooling Fan</div>
+                        <div class="flex rounded-md bg-black/40 p-1 border border-border/20">
+                            <button id="btn-fan-auto" class="flex-1 rounded py-1 text-xs font-semibold uppercase tracking-wider transition bg-primary text-gray-900 shadow-md" onclick="setActuatorMode('fan', 'auto')">auto</button>
+                            <button id="btn-fan-on" class="flex-1 rounded py-1 text-xs font-semibold uppercase tracking-wider transition text-gray-400 hover:text-white" onclick="setActuatorMode('fan', 'on')">on</button>
+                            <button id="btn-fan-off" class="flex-1 rounded py-1 text-xs font-semibold uppercase tracking-wider transition text-gray-400 hover:text-white" onclick="setActuatorMode('fan', 'off')">off</button>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div class="mb-1 text-[10px] uppercase tracking-widest text-gray-400 font-bold">Relay (Load)</div>
+                        <div class="flex rounded-md bg-black/40 p-1 border border-border/20">
+                            <button id="btn-relay-auto" class="flex-1 rounded py-1 text-xs font-semibold uppercase tracking-wider transition bg-primary text-gray-900 shadow-md" onclick="setActuatorMode('relay', 'auto')">auto</button>
+                            <button id="btn-relay-on" class="flex-1 rounded py-1 text-xs font-semibold uppercase tracking-wider transition text-gray-400 hover:text-white" onclick="setActuatorMode('relay', 'on')">on</button>
+                            <button id="btn-relay-off" class="flex-1 rounded py-1 text-xs font-semibold uppercase tracking-wider transition text-gray-400 hover:text-white" onclick="setActuatorMode('relay', 'off')">off</button>
+                        </div>
+                    </div>
+
+                    <button class="flex w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-wider transition bg-[#080d16] hover:bg-black/50 border border-border/40 text-white mt-4" onclick="triggerResetAlarm()">
+                        <i class="fa-solid fa-bell-slash text-xs text-amber-400"></i> Mute / Reset Alarm
+                    </button>
+                    <p class="text-[10px] text-gray-400 mt-2 leading-normal">Commands flow: Dashboard → Server → ESP32 → Relay / Fan / Buzzer.</p>
+                </div>
+            </div>
+
+            <!-- Fault Simulator range inputs -->
+            <div class="glass-card p-5">
+                <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400 mb-4">
+                    <span class="text-primary"><i class="fa-solid fa-bug"></i></span>Fault Injector (Viva Demo)
+                </div>
+                <div class="space-y-4 text-sm text-white">
+                    <div>
+                        <div class="mb-1 flex justify-between text-[10px] uppercase tracking-widest text-gray-400">
+                            <span>Load demand</span><span class="font-mono text-primary" id="lbl-slide-load">40%</span>
+                        </div>
+                        <input type="range" min="0" max="1" step="0.05" class="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-black/40 border border-border/30 accent-primary" value="0.4" id="slide-load" oninput="updateSliders()"/>
+                    </div>
+                    
+                    <div>
+                        <div class="mb-1 flex justify-between text-[10px] uppercase tracking-widest text-gray-400">
+                            <span>Ambient temp</span><span class="font-mono text-primary" id="lbl-slide-temp">28°C</span>
+                        </div>
+                        <input type="range" min="15" max="45" step="1" class="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-black/40 border border-border/30 accent-primary" value="28" id="slide-temp" oninput="updateSliders()"/>
+                    </div>
+                    
+                    <div>
+                        <div class="mb-1 text-[10px] uppercase tracking-widest text-gray-400">Inject fault</div>
+                        <div class="flex rounded-md bg-black/40 p-1 border border-border/20">
+                            <button id="btn-fault-none" class="flex-1 rounded py-1 text-[11px] font-semibold uppercase tracking-wider transition bg-primary text-gray-900 shadow-md" onclick="injectFault('none')">none</button>
+                            <button id="btn-fault-overheat" class="flex-1 rounded py-1 text-[11px] font-semibold uppercase tracking-wider transition text-gray-400 hover:text-white" onclick="injectFault('overheat')">overheat</button>
+                            <button id="btn-fault-overvolt" class="flex-1 rounded py-1 text-[11px] font-semibold uppercase tracking-wider transition text-gray-400 hover:text-white" onclick="injectFault('overvolt')">overvolt</button>
+                            <button id="btn-fault-overcurrent" class="flex-1 rounded py-1 text-[11px] font-semibold uppercase tracking-wider transition text-gray-400 hover:text-white" onclick="injectFault('overcurrent')">overcurrent</button>
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-gray-400 leading-normal">Trigger a fault and watch the Digital Twin self-heal in under a second.</p>
+                </div>
+            </div>
+
+            <!-- Diagnostics log feed -->
+            <div class="glass-card flex max-h-[340px] flex-col p-5">
+                <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400 mb-3">
+                    <span class="text-primary"><i class="fa-solid fa-list-check"></i></span>Event &amp; Alert Log
+                </div>
+                <ul class="flex-grow space-y-2 overflow-y-auto pr-1 font-mono text-[11px] text-gray-300" id="logs-list-container">
+                    <!-- Dynamic logs list -->
+                </ul>
+            </div>
+        </section>
+
+        <footer class="mt-10 mb-6 text-center text-xs text-gray-500 border-t border-white/5 pt-4">
+            Self-Healing EV Battery Simulator · Digital Twin · ESP32 ⇄ Wi-Fi ⇄ Server
+        </footer>
+    </main>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Offline simulation logic script -->
+    <script>
+        // System variables
+        let tempChart = null;
+        let voltageChart = null;
+        let currentChart = null;
+
+        // History
+        let chartData = {
+            timestamps: [],
+            temp: [],
+            volt: [],
+            curr: []
+        };
+
+        // User modes overrides
+        let fanMode = 'auto';
+        let relayMode = 'auto';
+        let activeFault = 'none';
+        let unresolvedAlerts = [];
+        let resetAlarmLatch = false;
+        
+        let batterySOC = 82.0;
+        let batterySOH = 96.0;
+
+        // Clock
+        function updateClock() {
+            const clock = document.getElementById('header-clock');
+            if (clock) {
+                clock.innerText = new Date().toLocaleTimeString();
+            }
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Init charts
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            
+            // Seed base history
+            const now = new Date();
+            for (let i = 10; i >= 0; i--) {
+                const t = new Date(now.getTime() - i * 5000);
+                chartData.timestamps.push(t.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}));
+                chartData.temp.push(28.0 + (Math.random() - 0.5) * 0.5);
+                chartData.volt.push(3.90 + (Math.random() - 0.5) * 0.02);
+                chartData.curr.push(1.20 + (Math.random() - 0.5) * 0.1);
+            }
+            updateTrendPlots();
+            
+            // Add initial log
+            addLogEntry("Digital Twin initialised. ESP32 link online.");
+
+            // Start loop
+            setInterval(tickSimulation, 1000);
+        });
+
+        function initCharts() {
+            const config = (label, color, bg) => ({
+                type: 'line',
+                data: {
+                    labels: chartData.timestamps,
+                    datasets: [{
+                        label: label,
+                        data: [],
+                        borderColor: color,
+                        backgroundColor: bg,
+                        borderWidth: 1.5,
+                        tension: 0.25,
+                        fill: true,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#64748b', font: { size: 9, family: 'JetBrains Mono' } } },
+                        x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 9, family: 'JetBrains Mono' } } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            tempChart = new Chart(document.getElementById('tempChart').getContext('2d'), config('Temp', '#00f2fe', 'rgba(0,242,254,0.05)'));
+            voltageChart = new Chart(document.getElementById('voltageChart').getContext('2d'), config('Volt', '#10b981', 'rgba(16,185,129,0.05)'));
+            currentChart = new Chart(document.getElementById('currentChart').getContext('2d'), config('Current', '#f59e0b', 'rgba(245,158,11,0.05)'));
+        }
+
+        function updateTrendPlots() {
+            if (!tempChart) return;
+            
+            tempChart.data.labels = chartData.timestamps;
+            tempChart.data.datasets[0].data = chartData.temp;
+            tempChart.update('none');
+
+            voltageChart.data.labels = chartData.timestamps;
+            voltageChart.data.datasets[0].data = chartData.volt;
+            voltageChart.update('none');
+
+            currentChart.data.labels = chartData.timestamps;
+            currentChart.data.datasets[0].data = chartData.curr;
+            currentChart.update('none');
+        }
+
+        function addLogEntry(msg) {
+            const container = document.getElementById('logs-list-container');
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            
+            let bulletColor = 'text-primary';
+            if (msg.includes('CRITICAL') || msg.includes('tripped')) bulletColor = 'text-red-500';
+            else if (msg.includes('RECOVERY') || msg.includes('resolved')) bulletColor = 'text-emerald-400';
+            else if (msg.includes('override') || msg.includes('Warning')) bulletColor = 'text-amber-500';
+
+            const li = document.createElement('li');
+            li.className = "flex gap-2 border-b border-white/5 pb-1.5 leading-normal";
+            li.innerHTML = `
+                <span class="text-gray-500 text-[10px]">${time}</span>
+                <span class="${bulletColor}">•</span>
+                <span class="flex-1 text-gray-300 text-left">${msg}</span>
+            `;
+            container.insertBefore(li, container.firstChild);
+            
+            if (container.children.length > 30) {
+                container.removeChild(container.lastChild);
+            }
+        }
+
+        // Auto/On/Off manual overrides buttons handler
+        function setActuatorMode(actuator, mode) {
+            if (actuator === 'fan') {
+                fanMode = mode;
+                addLogEntry(`Operator override: Set cooling fan mode to ${mode.toUpperCase()}.`);
+            } else if (actuator === 'relay') {
+                relayMode = mode;
+                addLogEntry(`Operator override: Set relay mode to ${mode.toUpperCase()}.`);
+            }
+            syncButtons(actuator, mode);
+            tickSimulation();
+        }
+
+        function syncButtons(actuator, mode) {
+            ['auto', 'on', 'off'].forEach(m => {
+                const btn = document.getElementById(`btn-${actuator}-${m}`);
+                if (btn) btn.className = 'flex-1 rounded py-1 text-xs font-semibold uppercase tracking-wider transition text-gray-400 hover:text-white';
+            });
+            const active = document.getElementById(`btn-${actuator}-${mode}`);
+            if (active) active.className = 'flex-1 rounded py-1 text-xs font-semibold uppercase tracking-wider transition bg-primary text-gray-900 shadow-md';
+        }
+
+        // Fault preset buttons handler
+        function injectFault(mode) {
+            activeFault = mode;
+            ['none', 'overheat', 'overvolt', 'overcurrent'].forEach(m => {
+                const btn = document.getElementById(`btn-fault-${m}`);
+                if (btn) btn.className = 'flex-1 rounded py-1 text-[11px] font-semibold uppercase tracking-wider transition text-gray-400 hover:text-white';
+            });
+            const active = document.getElementById(`btn-fault-${mode}`);
+            if (active) active.className = 'flex-1 rounded py-1 text-[11px] font-semibold uppercase tracking-wider transition bg-primary text-gray-900 shadow-md';
+
+            if (mode !== 'none') {
+                addLogEntry(`Fault Injector: Simulated ${mode.toUpperCase()} condition triggered.`);
+            } else {
+                addLogEntry(`Fault Injector: Cleared active fault preset.`);
+            }
+            tickSimulation();
+        }
+
+        // Range inputs slider movements trigger
+        function updateSliders() {
+            const loadVal = parseFloat(document.getElementById('slide-load').value);
+            const tempVal = parseFloat(document.getElementById('slide-temp').value);
+
+            document.getElementById('lbl-slide-load').innerText = `${Math.round(loadVal * 100)}%`;
+            document.getElementById('lbl-slide-temp').innerText = `${tempVal}°C`;
+            tickSimulation();
+        }
+
+        function triggerResetAlarm() {
+            resetAlarmLatch = true;
+            addLogEntry("Operator command: Alarm manual reset triggered.");
+            tickSimulation();
+        }
+
+        // Main client simulation loop
+        function tickSimulation() {
+            const load = parseFloat(document.getElementById('slide-load').value);
+            const ambient = parseFloat(document.getElementById('slide-temp').value);
+
+            // 1. Math formulas
+            let current = load * 4.5;
+            let temp = ambient + (current * current * 1.25);
+            let volt = 4.15 - (load * 0.4);
+
+            // Apply presets overrides
+            if (activeFault === 'overheat') {
+                temp = 58.5;
+                current = 1.0;
+            } else if (activeFault === 'overvolt') {
+                volt = 4.35;
+                temp = 26.5;
+            } else if (activeFault === 'overcurrent') {
+                current = 5.50;
+                temp = 28.0;
+            }
+
+            // Fluctuations noise
+            temp = Math.max(0, temp + (Math.random() - 0.5) * 0.2);
+            volt = Math.max(0, volt + (Math.random() - 0.5) * 0.01);
+            current = Math.max(0, current + (Math.random() - 0.5) * 0.03);
+
+            // Calculate SOC decrease over time
+            batterySOC = Math.max(5, batterySOC - 0.02 * load);
+            
+            // 2. Evaluates self-healing logical compliance
+            let chkTempWarn = temp < 45.0;
+            let chkTempCrit = temp < 55.0;
+            let chkVolt = volt >= 3.2 && volt <= 4.25;
+            let chkCurr = current <= 5.0;
+
+            let criticalTripped = !chkTempCrit || !chkVolt || !chkCurr;
+            let warningTripped = !chkTempWarn && chkTempCrit;
+
+            // Handle unresolved alerts
+            if (!chkTempWarn && !unresolvedAlerts.includes('High Temperature')) {
+                unresolvedAlerts.push('High Temperature');
+                addLogEntry("WARNING: Temperature is high. Cooling fan turned ON.");
+            }
+            if (!chkTempCrit && !unresolvedAlerts.includes('Overheat Critical')) {
+                unresolvedAlerts.push('Overheat Critical');
+                addLogEntry("CRITICAL: Overheat protection triggered! Battery isolated.");
+            }
+            if (!chkVolt && !unresolvedAlerts.includes('Voltage Limit')) {
+                unresolvedAlerts.push('Voltage Limit');
+                addLogEntry(`CRITICAL: Voltage is out of boundaries (${volt.toFixed(2)}V). Battery isolated.`);
+            }
+            if (!chkCurr && !unresolvedAlerts.includes('Current Spike')) {
+                unresolvedAlerts.push('Current Spike');
+                addLogEntry(`CRITICAL: Current surged to ${current.toFixed(2)}A. Battery isolated.`);
+            }
+
+            // Self-healing actuator evaluation
+            let fanActive = false;
+            let relayActive = true;
+            let buzzerActive = false;
+
+            // Rules
+            if (criticalTripped) {
+                fanActive = true;
+                relayActive = false;
+                buzzerActive = true;
+            } else if (warningTripped) {
+                fanActive = true;
+                relayActive = true;
+            }
+
+            // Process Reset Alarm
+            if (resetAlarmLatch) {
+                if (!criticalTripped && !warningTripped) {
+                    unresolvedAlerts = [];
+                    addLogEntry("RECOVERY: All safety limits nominal. System alerts cleared.");
+                } else {
+                    addLogEntry("WARNING: Reset blocked. Safety parameters still exceed boundary limits.");
+                }
+                resetAlarmLatch = false;
+            }
+
+            // Operator override selections
+            if (!criticalTripped) {
+                if (fanMode === 'on') fanActive = true;
+                else if (fanMode === 'off') fanActive = false;
+
+                if (relayMode === 'on') relayActive = true;
+                else if (relayMode === 'off') relayActive = false;
+            } else {
+                // Force safety
+                relayActive = false;
+            }
+
+            // 3. Render actuator dashboard blocks
+            const cardFan = document.getElementById('card-actuator-fan');
+            document.getElementById('val-actuator-fan').innerText = fanActive ? 'ON' : 'OFF';
+            cardFan.className = fanActive 
+                ? 'flex items-center gap-3 rounded-lg p-3 ring-1 bg-primary/10 text-primary ring-primary/30'
+                : 'flex items-center gap-3 rounded-lg p-3 ring-1 bg-black/10 text-gray-300 ring-border';
+
+            const cardRelay = document.getElementById('card-actuator-relay');
+            document.getElementById('val-actuator-relay').innerText = relayActive ? 'ON' : 'OFF';
+            cardRelay.className = relayActive
+                ? 'flex items-center gap-3 rounded-lg p-3 ring-1 bg-primary/20 text-primary ring-primary/40'
+                : 'flex items-center gap-3 rounded-lg p-3 ring-1 bg-red-500/10 text-red-500 ring-red-500/30 animate-pulse';
+
+            const cardBuzzer = document.getElementById('card-actuator-buzzer');
+            document.getElementById('val-actuator-buzzer').innerText = buzzerActive ? 'ON' : 'OFF';
+            cardBuzzer.className = buzzerActive
+                ? 'flex items-center gap-3 rounded-lg p-3 ring-1 bg-red-500/15 text-red-400 ring-red-500/30 animate-pulse'
+                : 'flex items-center gap-3 rounded-lg p-3 ring-1 bg-black/10 text-gray-300 ring-border';
+
+            // LEDs
+            const ledRed = document.getElementById('led-red');
+            const ledYellow = document.getElementById('led-yellow');
+            const ledGreen = document.getElementById('led-green');
+            const valLed = document.getElementById('val-actuator-led');
+            const metaLed = document.getElementById('meta-led');
+
+            ledRed.className = 'h-3.5 w-3.5 rounded-full transition-all opacity-25';
+            ledYellow.className = 'h-3.5 w-3.5 rounded-full transition-all opacity-25';
+            ledGreen.className = 'h-3.5 w-3.5 rounded-full transition-all opacity-25';
+
+            if (!relayActive || buzzerActive) {
+                ledRed.className = 'h-3.5 w-3.5 rounded-full transition-all opacity-100 shadow-[0_0_12px_#ef4444]';
+                valLed.innerText = 'RED';
+                valLed.className = 'font-mono text-sm font-semibold text-red-500';
+                metaLed.innerText = 'RED';
+                metaLed.className = 'text-sm font-semibold text-red-500';
+            } else if (fanActive) {
+                ledYellow.className = 'h-3.5 w-3.5 rounded-full transition-all opacity-100 shadow-[0_0_12px_#f59e0b]';
+                valLed.innerText = 'YELLOW';
+                valLed.className = 'font-mono text-sm font-semibold text-amber-500';
+                metaLed.innerText = 'YELLOW';
+                metaLed.className = 'text-sm font-semibold text-amber-500';
+            } else {
+                ledGreen.className = 'h-3.5 w-3.5 rounded-full transition-all opacity-100 shadow-[0_0_12px_#10b981]';
+                valLed.innerText = 'GREEN';
+                valLed.className = 'font-mono text-sm font-semibold text-emerald-400';
+                metaLed.innerText = 'GREEN';
+                metaLed.className = 'text-sm font-semibold text-emerald-400';
+            }
+
+            // System Status Card
+            const statusText = document.getElementById('status-text');
+            const statusDesc = document.getElementById('status-desc');
+            const statusPulse = document.getElementById('status-pulse');
+            statusPulse.className = 'pulse-dot inline-block h-3 w-3 rounded-full';
+            statusText.className = '';
+
+            if (criticalTripped) {
+                statusPulse.classList.add('bg-red-500', 'text-red-500');
+                statusText.classList.add('text-red-500');
+                statusText.innerText = 'Critical Protection';
+                statusDesc.innerText = 'Critical cell boundaries exceeded! Safe relay isolated to prevent thermal runway.';
+            } else if (warningTripped) {
+                statusPulse.classList.add('bg-amber-500', 'text-amber-500');
+                statusText.classList.add('text-amber-500');
+                statusText.innerText = 'Warning Override';
+                statusDesc.innerText = 'High temperature warning limit exceeded. Cooling fan blower active.';
+            } else {
+                statusPulse.classList.add('bg-[#00f2fe]', 'text-[#00f2fe]');
+                statusText.classList.add('text-[#00f2fe]');
+                statusText.innerText = 'Nominal';
+                statusDesc.innerText = 'Digital twin reconciling sensor stream from ESP32 every second.';
+            }
+
+            // Alerts Banner list update
+            const alertsContainer = document.getElementById('alerts-container');
+            if (unresolvedAlerts.length === 0) {
+                alertsContainer.innerHTML = '';
+            } else {
+                let alertHtml = '';
+                unresolvedAlerts.forEach(a => {
+                    const isCrit = a.includes('Overheat') || a.includes('Voltage') || a.includes('Current');
+                    const bgClass = isCrit ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+                    const icon = isCrit ? 'fa-triangle-exclamation' : 'fa-circle-exclamation';
+                    alertHtml += `
+                        <div class="flex items-center gap-3 p-4 rounded-lg border text-sm ${bgClass}">
+                            <i class="fa-solid ${icon} text-lg"></i>
+                            <div>
+                                <strong class="uppercase font-mono text-xs mr-2">[${isCrit ? 'CRITICAL' : 'WARNING'}]</strong>
+                                <span>Cell boundary safety threshold exceeded: ${a} fault code registered.</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                alertsContainer.innerHTML = alertHtml;
+            }
+
+            // 4. Update numerical blocks values
+            document.getElementById('metric-temp').innerText = temp.toFixed(1);
+            document.getElementById('metric-voltage').innerText = volt.toFixed(2);
+            document.getElementById('metric-current').innerText = current.toFixed(2);
+            document.getElementById('metric-soc').innerText = batterySOC.toFixed(1);
+            document.getElementById('metric-soh').innerText = batterySOH.toFixed(1);
+            
+            const healthScore = Math.round(batterySOH * 0.94);
+            document.getElementById('metric-health').innerText = healthScore;
+
+            // battery cell graphic update
+            document.getElementById('battery-fill-bar').style.height = `${batterySOC}%`;
+            document.getElementById('battery-fill-percent').innerText = `${Math.round(batterySOC)}%`;
+
+            document.getElementById('txt-soc').innerText = `${batterySOC.toFixed(1)} %`;
+            document.getElementById('txt-soh').innerText = `${batterySOH.toFixed(1)} %`;
+            document.getElementById('txt-voltage').innerText = `${volt.toFixed(2)} V`;
+            document.getElementById('txt-current').innerText = `${current.toFixed(2)} A`;
+            document.getElementById('txt-temp').innerText = `${temp.toFixed(1)} °C`;
+            document.getElementById('txt-load').innerText = relayActive ? 'Connected' : 'Isolated';
+            document.getElementById('txt-load').className = relayActive ? 'text-emerald-400 font-semibold' : 'text-red-500 font-semibold';
+
+            // Rules Compliance highlights
+            updateRuleState('temp-warn', chkTempWarn);
+            updateRuleState('temp-crit', chkTempCrit);
+            updateRuleState('volt', chkVolt);
+            updateRuleState('current', chkCurr);
+
+            // Append trend data
+            chartData.timestamps.push(new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}));
+            chartData.temp.push(temp);
+            chartData.volt.push(volt);
+            chartData.curr.push(current);
+
+            // Shift older entries
+            if (chartData.timestamps.length > 15) {
+                chartData.timestamps.shift();
+                chartData.temp.shift();
+                chartData.volt.shift();
+                chartData.curr.shift();
+            }
+
+            updateTrendPlots();
+        }
+
+        function updateRuleState(ruleId, isOk) {
+            const dot = document.getElementById(`chk-dot-${ruleId}`);
+            const lbl = document.getElementById(`chk-lbl-${ruleId}`);
+            if (isOk) {
+                dot.className = 'h-2 w-2 rounded-full bg-primary';
+                lbl.innerText = 'OK';
+                lbl.className = 'ml-auto text-gray-400 font-bold';
+            } else {
+                dot.className = 'h-2 w-2 rounded-full bg-red-500 animate-pulse';
+                lbl.innerText = 'TRIPPED';
+                lbl.className = 'ml-auto text-red-500 font-bold';
+            }
+        }
+    </script>
+</body>
+</html>

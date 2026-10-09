@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EV Battery Digital Twin — Portal Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Space Grotesk','sans-serif'], mono: ['JetBrains Mono','monospace'] },
+                    colors: { primary: '#00f2fe', border: 'rgba(0,242,254,0.12)', card: 'rgba(21,38,52,0.8)' }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="glass-card w-full max-w-md p-8 relative overflow-hidden bg-gradient-to-br from-primary/5 to-transparent">
+        <div class="text-center mb-8">
+            <div class="inline-grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary border border-primary/20 mb-3 animate-pulse">
+                <i class="fa-solid fa-battery-three-quarters text-xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-white leading-tight">EV Battery Digital Twin</h3>
+            <p class="text-xs text-gray-400 uppercase tracking-widest mt-1">Operator Access Portal</p>
+        </div>
+
+        <!--FLASH-->
+
+        <form method="POST" action="/login" class="space-y-5" id="login-form">
+            <div>
+                <label for="email" class="block text-xs uppercase tracking-wider text-gray-400 font-semibold mb-1.5">Operator Email *</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">
+                        <i class="fa-solid fa-envelope text-xs"></i>
+                    </span>
+                    <input id="email" name="email" type="email" required placeholder="admin@battery.twin"
+                           class="w-full bg-black/40 border border-border rounded pl-9 pr-3 py-2 text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                </div>
+            </div>
+
+            <div>
+                <label for="password" class="block text-xs uppercase tracking-wider text-gray-400 font-semibold mb-1.5">Password *</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">
+                        <i class="fa-solid fa-lock text-xs"></i>
+                    </span>
+                    <input id="password" name="password" type="password" required placeholder="••••••••"
+                           class="w-full bg-black/40 border border-border rounded pl-9 pr-3 py-2 text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <input id="remember" name="remember" type="checkbox" value="on"
+                       class="h-3.5 w-3.5 rounded bg-black/40 border border-border text-primary accent-primary">
+                <label class="text-xs text-gray-400" for="remember">Remember my session</label>
+            </div>
+
+            <button type="submit" class="w-full py-2.5 rounded bg-primary text-gray-900 font-bold text-xs uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer shadow-md">
+                Sign In
+            </button>
+        </form>
+
+        <div class="text-center mt-5 font-mono text-xs">
+            <span class="text-gray-400">New operator?</span>
+            <a href="/register" class="text-primary hover:underline font-bold ml-1">Create Account Here</a>
+        </div>
+
+        <div class="text-center mt-5 pt-4 border-t border-white/5 font-mono text-[10px]">
+            <span class="text-gray-500 block">Default seeding credentials:</span>
+            <code class="text-primary mt-1 block">admin@battery.twin / AdminPassword123</code>
+        </div>
+    </div>
+
+    <script>
+        // Show flash if registered=1 in URL params
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('registered') === '1') {
+            const flash = document.createElement('div');
+            flash.className = 'p-3 mb-4 rounded text-xs text-center border bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+            flash.textContent = 'Account created successfully! Please log in with your credentials.';
+            document.querySelector('form').before(flash);
+        }
+    </script>
+</body>
+</html>

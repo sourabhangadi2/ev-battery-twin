@@ -1,0 +1,891 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+    <!-- Active Safety/Critical Alerts Banner (Dynamic Alerts) -->
+    <div id="alerts-container" class="mb-4 space-y-3">
+        <!-- Live Alerts appear here dynamically -->
+    </div>
+
+    <!-- HERO STATUS BOX -->
+    <div class="glass-card relative overflow-hidden p-6 bg-gradient-to-br from-primary/10 to-transparent">
+        <div class="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+            <div>
+                <div class="text-xs uppercase tracking-[0.2em] text-gray-400">System Status</div>
+                <div class="mt-1 flex items-center gap-3 text-2xl font-semibold text-primary">
+                    <span class="pulse-dot inline-block h-3 w-3 rounded-full bg-primary" id="status-pulse"></span>
+                    <span id="status-text">Nominal</span>
+                </div>
+                <p class="mt-1 text-sm text-gray-400" id="status-desc">Digital twin reconciling sensor stream from ESP32 every second.</p>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-3 font-mono text-sm">
+                <div class="rounded-lg border border-border bg-black/30 px-3 py-2">
+                    <div class="text-[10px] uppercase tracking-widest text-gray-400">Cycles</div>
+                    <div class="text-sm font-semibold text-white" id="meta-cycles">--</div>
+                </div>
+                <div class="rounded-lg border border-border bg-black/30 px-3 py-2">
+                    <div class="text-[10px] uppercase tracking-widest text-gray-400">Est. life</div>
+                    <div class="text-sm font-semibold text-white" id="meta-life">--</div>
+                </div>
+                <div class="rounded-lg border border-border bg-black/30 px-3 py-2">
+                    <div class="text-[10px] uppercase tracking-widest text-gray-400">LED</div>
+                    <div class="text-sm font-semibold text-primary" id="meta-led">GREEN</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- EV DRIVING SIMULATION / DIGITAL TWIN CONTROL -->
+    <section class="mt-6 glass-card p-5" id="ev-driving-simulation">
+        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+                <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
+                    <span class="text-primary"><i class="fa-solid fa-gauge-high"></i></span>EV Driving Simulation
+                </div>
+                <p class="mt-1 text-[11px] text-gray-500">Simulation / Prototype Model — deterministic Digital Twin demo; real EV pack behavior varies by vehicle.</p>
+            </div>
+            <div class="rounded-md border border-primary/20 bg-primary/5 px-3 py-1.5 text-[10px] font-mono text-primary">
+                96S × 3.7V ≈ 355V nominal
+            </div>
+        </div>
+
+        <div class="mt-5 grid gap-5 lg:grid-cols-[1.1fr_1fr_1fr]">
+            <!-- Futuristic analog speedometer -->
+            <div class="speedometer-card rounded-xl border border-cyan-400/10 bg-[#07111b]/80 p-4">
+                <div class="flex items-center justify-between">
+                    <div class="text-[10px] uppercase tracking-[0.22em] text-gray-400">EV Driving Speed</div>
+                    <div class="speedometer-live-dot"><span></span> LIVE</div>
+                </div>
+
+                <div class="speedometer-wrap mx-auto mt-2">
+                    <div class="speedometer-glow"></div>
+                    <svg id="ev-speed-gauge" class="speedometer-svg" viewBox="0 0 320 320" aria-label="EV speedometer">
+                        <defs>
+                            <linearGradient id="speedArcGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#00f2fe"/>
+                                <stop offset="72%" stop-color="#00d9e8"/>
+                                <stop offset="100%" stop-color="#ff304f"/>
+                            </linearGradient>
+                            <filter id="speedGlow" x="-50%" y="-50%" width="200%" height="200%">
+                                <feGaussianBlur stdDeviation="4" result="blur"/>
+                                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                            </filter>
+                        </defs>
+                        <circle cx="160" cy="160" r="137" class="gauge-shell"/>
+                        <circle cx="160" cy="160" r="126" class="gauge-track"/>
+                        <path id="ev-speed-arc" class="gauge-progress" d="M 60 230 A 126 126 0 1 1 260 230"/>
+                        <g id="ev-speed-ticks"></g>
+                        <g id="ev-speed-labels"></g>
+                        <circle cx="160" cy="160" r="72" class="gauge-center-ring"/>
+                        <circle cx="160" cy="160" r="61" class="gauge-center"/>
+                        <line id="ev-speed-needle" x1="160" y1="160" x2="250" y2="160" class="gauge-needle"/>
+                        <circle cx="160" cy="160" r="9" class="gauge-hub"/>
+                        <circle cx="160" cy="160" r="4" class="gauge-hub-core"/>
+                        <text x="160" y="174" text-anchor="middle" class="gauge-speed-number" id="ev-speed-svg-value">0</text>
+                        <text x="160" y="194" text-anchor="middle" class="gauge-unit">KM/H</text>
+                        <text x="160" y="222" text-anchor="middle" class="gauge-mode">EV DRIVE</text>
+                    </svg>
+                    <div class="gauge-side-info gauge-side-left">
+                        <span class="gauge-side-title">LOAD</span>
+                        <strong id="ev-gauge-load">0%</strong>
+                    </div>
+                    <div class="gauge-side-info gauge-side-right">
+                        <span class="gauge-side-title">POWER</span>
+                        <strong><span id="ev-gauge-power">0</span> W</strong>
+                    </div>
+                </div>
+
+                <div class="mt-1 text-center font-mono text-sm text-white">Speed: <span id="ev-speed-label">0</span> km/h</div>
+                <div class="mt-3 flex items-center justify-between px-1 text-[9px] font-mono text-gray-500">
+                    <span>0</span><span>20</span><span>40</span><span>60</span><span>80</span><span>100</span><span>120</span>
+                </div>
+                <input id="ev-speed-slider" type="range" min="0" max="120" step="1" value="0"
+                       class="speedometer-slider mt-1 w-full cursor-pointer" oninput="setEVSpeed(this.value)">
+            </div>
+
+            <!-- Duration + controls -->
+            <div class="rounded-xl border border-border/40 bg-black/20 p-4">
+                <div class="text-[10px] uppercase tracking-widest text-gray-400">Driving Duration</div>
+                <select id="ev-duration-select" onchange="setEVDuration(this.value)"
+                        class="mt-2 w-full rounded-md border border-border/40 bg-black/50 px-3 py-2 text-sm text-white outline-none">
+                    <option value="0">0 hours</option>
+                    <option value="0.5">0.5 hour</option>
+                    <option value="1">1 hour</option>
+                    <option value="1.5">1.5 hours</option>
+                    <option value="2">2 hours</option>
+                    <option value="2.5">2.5 hours</option>
+                    <option value="3">3 hours</option>
+                    <option value="3.5">3.5 hours</option>
+                    <option value="4">4 hours</option>
+                    <option value="4.5">4.5 hours</option>
+                    <option value="5" selected>5 hours</option>
+                </select>
+
+                <div class="mt-4 flex items-center justify-between text-xs">
+                    <span class="text-gray-400">Driving Duration</span>
+                    <span class="font-mono text-white" id="ev-duration-label">5.0 hours</span>
+                </div>
+                <div class="mt-2 h-2 overflow-hidden rounded-full bg-black/50">
+                    <div id="ev-duration-progress" class="h-full rounded-full bg-primary transition-all duration-300" style="width:0%"></div>
+                </div>
+                <div class="mt-1 flex justify-between text-[10px] font-mono text-gray-500">
+                    <span id="ev-elapsed-label">0.00 / 5.00 hours</span><span>5 hours</span>
+                </div>
+
+                <div class="mt-5 grid grid-cols-3 gap-2">
+                    <button id="ev-start-btn" onclick="startEVSimulation()" class="rounded-md bg-primary px-3 py-2 text-xs font-bold uppercase tracking-wider text-gray-900 hover:opacity-90"><i class="fa-solid fa-play mr-1"></i>Start</button>
+                    <button onclick="pauseEVSimulation()" class="rounded-md border border-border/50 bg-black/30 px-3 py-2 text-xs font-bold uppercase tracking-wider text-gray-300 hover:text-white"><i class="fa-solid fa-pause mr-1"></i>Pause</button>
+                    <button onclick="resetEVSimulation()" class="rounded-md border border-border/50 bg-black/30 px-3 py-2 text-xs font-bold uppercase tracking-wider text-gray-300 hover:text-white"><i class="fa-solid fa-rotate-left mr-1"></i>Reset</button>
+                </div>
+
+                <div class="mt-4 rounded-md border border-border/30 bg-black/30 p-3 text-[10px] text-gray-400">
+                    <div>Simulation timer: <span id="ev-timer-state" class="font-mono text-primary">STOPPED</span></div>
+                    <div class="mt-1">Demo acceleration: <span id="ev-acceleration-label" class="font-mono text-white">1 sim hour / 20 real seconds</span></div>
+                </div>
+            </div>
+
+            <!-- Live simulation status -->
+            <div class="rounded-xl border border-border/40 bg-black/20 p-4">
+                <div class="text-[10px] uppercase tracking-widest text-gray-400">Live Simulation State</div>
+                <div class="mt-4 grid grid-cols-2 gap-3">
+                    <div class="rounded-md border border-border/30 bg-black/30 p-3">
+                        <div class="text-[10px] text-gray-500">Temperature</div>
+                        <div class="mt-1 font-mono text-xl text-white"><span id="ev-sim-temp">29.0</span> °C</div>
+                    </div>
+                    <div class="rounded-md border border-border/30 bg-black/30 p-3">
+                        <div class="text-[10px] text-gray-500">Status</div>
+                        <div class="mt-1 font-mono text-xl text-emerald-400" id="ev-temp-status">LOW</div>
+                    </div>
+                    <div class="rounded-md border border-border/30 bg-black/30 p-3">
+                        <div class="text-[10px] text-gray-500">Cooling Fan</div>
+                        <div class="mt-1 font-mono text-xl text-gray-300" id="ev-fan-status">OFF</div>
+                    </div>
+                    <div class="rounded-md border border-border/30 bg-black/30 p-3">
+                        <div class="text-[10px] text-gray-500">Elapsed</div>
+                        <div class="mt-1 font-mono text-xl text-white" id="ev-elapsed-value">0.00 h</div>
+                    </div>
+                </div>
+                <div id="ev-danger-banner" class="mt-4 hidden rounded-md border border-red-500/50 bg-red-500/10 p-3 text-red-300">
+                    <div class="flex items-center gap-2 font-bold uppercase tracking-wider"><i class="fa-solid fa-triangle-exclamation"></i> VEHICLE IN DANGER</div>
+                    <div class="mt-1 text-[10px] leading-relaxed">High battery temperature detected. Driving is locked while the cooling fan reduces temperature. Wait for the cooling cycle to complete.</div>
+                    <div class="mt-2 font-mono text-xs">Cooling time: <span id="ev-cooling-time">20:00</span> <span class="text-gray-400">(typically 15–20 simulated min)</span></div>
+                </div>
+                <div class="mt-4 rounded-md border border-border/30 bg-black/30 p-3 text-[10px] leading-relaxed text-gray-400">
+                    <div><span class="text-white">Fan:</span> AUTO uses ON &gt;40°C and OFF ≤37°C hysteresis.</div>
+                    <div class="mt-1"><span class="text-white">Temperature zones:</span> NORMAL &lt;35°C · WARNING 35–39.9°C · HIGH TEMP 40–44.9°C · CRITICAL ≥45°C.</div>
+                    <div class="mt-1"><span class="text-white">High-risk rule:</span> ≥45°C stops driving and starts a gradual 15–20 minute accelerated cooling cycle. The vehicle can resume only after returning to a safe temperature.</div>
+                    <div class="mt-1"><span class="text-white">Pack:</span> 96 series cells, 3.2–4.2V/cell, configurable model.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- VOLTAGE METER + EVERY-SECOND SIMULATION LOG -->
+    <section class="mt-6 grid gap-4 xl:grid-cols-[0.85fr_2.15fr]" id="ev-live-monitoring">
+        <div class="voltage-meter-card glass-card p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
+                        <span class="text-primary"><i class="fa-solid fa-bolt"></i></span>EV Battery Voltage
+                    </div>
+                    <p class="mt-1 text-[10px] text-gray-500">400-V-class EV pack • normal 320–420 V • critical 280–430 V</p>
+                </div>
+                <div class="voltage-live-dot"><span></span> LIVE</div>
+            </div>
+            <div class="voltage-meter-wrap mx-auto mt-3">
+                <svg id="ev-voltage-gauge" class="voltage-meter-svg" viewBox="0 0 320 320" aria-label="EV battery pack voltage meter">
+                    <defs>
+                        <linearGradient id="voltageArcGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#00f2fe"/>
+                            <stop offset="70%" stop-color="#00d9e8"/>
+                            <stop offset="100%" stop-color="#ff304f"/>
+                        </linearGradient>
+                        <filter id="voltageGlow" x="-50%" y="-50%" width="200%" height="200%">
+                            <feGaussianBlur stdDeviation="4" result="blur"/>
+                            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                        </filter>
+                    </defs>
+                    <circle cx="160" cy="160" r="137" class="voltage-shell"/>
+                    <circle cx="160" cy="160" r="126" class="voltage-track"/>
+                    <path id="ev-voltage-arc" class="voltage-progress" d="M 60 230 A 126 126 0 1 1 260 230"/>
+                    <g id="ev-voltage-ticks"></g>
+                    <g id="ev-voltage-labels"></g>
+                    <circle cx="160" cy="160" r="72" class="voltage-center-ring"/>
+                    <circle cx="160" cy="160" r="61" class="voltage-center"/>
+                    <line id="ev-voltage-needle" x1="160" y1="160" x2="250" y2="160" class="voltage-needle"/>
+                    <circle cx="160" cy="160" r="9" class="voltage-hub"/>
+                    <circle cx="160" cy="160" r="4" class="voltage-hub-core"/>
+                    <text x="160" y="171" text-anchor="middle" class="voltage-number" id="ev-voltage-svg-value">355.2</text>
+                    <text x="160" y="192" text-anchor="middle" class="voltage-unit">VOLTS</text>
+                    <text x="160" y="218" text-anchor="middle" class="voltage-mode">PACK VOLTAGE</text>
+                </svg>
+            </div>
+            <div class="mt-1 grid grid-cols-2 gap-2 text-center font-mono text-[10px]">
+                <div class="rounded border border-border/30 bg-black/20 px-2 py-2"><span class="block text-gray-500">CELL</span><strong id="ev-voltage-cell">3.70 V</strong></div>
+                <div class="rounded border border-border/30 bg-black/20 px-2 py-2"><span class="block text-gray-500">PACK</span><strong id="ev-voltage-pack">355.2 V</strong></div>
+            </div>
+        </div>
+
+        <div class="glass-card p-5 min-w-0">
+            <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
+                        <span class="text-primary"><i class="fa-solid fa-table-list"></i></span>REAL-TIME DATA — EVERY 1 SECOND
+                    </div>
+                    <p class="mt-1 text-[10px] text-gray-500">A new row is captured every 1 real-world second while driving or cooling. Simulation time is shown separately.</p>
+                </div>
+                <div class="flex items-center gap-2 font-mono text-[10px] text-gray-500">
+                    <span id="ev-log-count">0 records</span>
+                    <button type="button" onclick="clearEVSimulationLog()" class="rounded border border-border/40 bg-black/30 px-2 py-1 text-gray-400 hover:text-white">Clear</button>
+                </div>
+            </div>
+            <div class="mt-3 ev-live-log-wrap">
+                <table class="ev-live-log-table w-full text-left font-mono text-[10px]">
+                    <thead>
+                        <tr>
+                            <th>Real Time (1s)</th>
+                            <th>Sim Time</th>
+                            <th>Speed</th>
+                            <th>Temp</th>
+                            <th>ΔT</th>
+                            <th>Fan</th>
+                            <th>Cell V</th>
+                            <th>Pack V</th>
+                            <th>Current</th>
+                            <th>Power</th>
+                            <th>SOC</th>
+                            <th>Cell ΔT</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ev-live-log-body">
+                        <tr><td colspan="13" class="py-6 text-center text-gray-600">Start driving or cooling to record one row every real-world second.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- EV TRACTION BATTERY REFERENCE -->
+    <section class="mt-6 glass-card p-5">
+        <div class="flex items-center justify-between gap-3">
+            <div>
+                <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
+                    <span class="text-primary"><i class="fa-solid fa-car-battery"></i></span>400-V-Class EV Battery Model
+                </div>
+                <p class="mt-1 text-[10px] text-gray-500">Academic Digital Twin thresholds — configurable simulation values, not universal OEM safety limits.</p>
+            </div>
+            <span class="rounded-full border border-primary/30 bg-primary/5 px-2 py-1 text-[9px] uppercase tracking-widest text-primary">Simulation / Prototype Model</span>
+        </div>
+        <div class="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-8 text-[10px]">
+            <div class="rounded border border-border/40 bg-black/10 p-2"><div class="text-gray-500">Pack Voltage</div><div class="mt-1 font-mono text-white">320–420 V</div><div class="text-gray-600">crit &lt;280 / &gt;430</div></div>
+            <div class="rounded border border-border/40 bg-black/10 p-2"><div class="text-gray-500">Current</div><div class="mt-1 font-mono text-white">0–200 A</div><div class="text-gray-600">high 200–300 / crit &gt;300</div></div>
+            <div class="rounded border border-border/40 bg-black/10 p-2"><div class="text-gray-500">Temperature</div><div class="mt-1 font-mono text-white">20–35°C</div><div class="text-gray-600">fan &gt;40 / crit ≥45</div></div>
+            <div class="rounded border border-border/40 bg-black/10 p-2"><div class="text-gray-500">SOC</div><div class="mt-1 font-mono text-white">20–90%</div><div class="text-gray-600">low &lt;20 / crit &lt;10</div></div>
+            <div class="rounded border border-border/40 bg-black/10 p-2"><div class="text-gray-500">Cell ΔT</div><div class="mt-1 font-mono text-white">&lt;3°C</div><div class="text-gray-600">warn 3–5 / crit &gt;5</div></div>
+            <div class="rounded border border-border/40 bg-black/10 p-2"><div class="text-gray-500">Power</div><div class="mt-1 font-mono text-white">V × A</div><div class="text-gray-600">shown in W / kW</div></div>
+            <div class="rounded border border-border/40 bg-black/10 p-2"><div class="text-gray-500">Nominal</div><div class="mt-1 font-mono text-white">380 V</div><div class="text-gray-600">400-V class</div></div>
+            <div class="rounded border border-border/40 bg-black/10 p-2"><div class="text-gray-500">Pack</div><div class="mt-1 font-mono text-white">96S</div><div class="text-gray-600">physical demo stays low-V</div></div>
+        </div>
+    </section>
+
+    <!-- 6-COLUMN PARAMETER METRICS GRID -->
+    <section class="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+        <!-- Metric 1: Temperature -->
+        <div class="glass-card p-4">
+            <div class="flex items-center justify-between text-gray-400">
+                <span class="text-[11px] uppercase tracking-widest">Temperature</span>
+                <span class="text-primary"><i class="fa-solid fa-thermometer"></i></span>
+            </div>
+            <div class="mt-2 flex items-baseline gap-1 font-mono text-white">
+                <span class="text-2xl font-semibold tabular-nums" id="metric-temp">--.-</span>
+                <span class="text-xs text-gray-400">°C</span>
+            </div>
+        </div>
+
+        <!-- Metric 2: Voltage -->
+        <div class="glass-card p-4">
+            <div class="flex items-center justify-between text-gray-400">
+                <span class="text-[11px] uppercase tracking-widest">Voltage</span>
+                <span class="text-primary"><i class="fa-solid fa-bolt"></i></span>
+            </div>
+            <div class="mt-2 flex items-baseline gap-1 font-mono text-white">
+                <span class="text-2xl font-semibold tabular-nums" id="metric-voltage">--.---</span>
+                <span class="text-xs text-gray-400">V</span>
+            </div>
+        </div>
+
+        <!-- Metric 3: Current -->
+        <div class="glass-card p-4">
+            <div class="flex items-center justify-between text-gray-400">
+                <span class="text-[11px] uppercase tracking-widest">Current</span>
+                <span class="text-primary"><i class="fa-solid fa-wave-square"></i></span>
+            </div>
+            <div class="mt-2 flex items-baseline gap-1 font-mono text-white">
+                <span class="text-2xl font-semibold tabular-nums" id="metric-current">--.--</span>
+                <span class="text-xs text-gray-400">A</span>
+            </div>
+        </div>
+
+        <!-- Metric 4: State of Charge (SOC) -->
+        <div class="glass-card p-4">
+            <div class="flex items-center justify-between text-gray-400">
+                <span class="text-[11px] uppercase tracking-widest">State of Charge</span>
+                <span class="text-primary"><i class="fa-solid fa-battery-three-quarters"></i></span>
+            </div>
+            <div class="mt-2 flex items-baseline gap-1 font-mono text-white">
+                <span class="text-2xl font-semibold tabular-nums" id="metric-soc">--.-</span>
+                <span class="text-xs text-gray-400">%</span>
+            </div>
+        </div>
+
+        <!-- Metric 5: State of Health (SOH) -->
+        <div class="glass-card p-4">
+            <div class="flex items-center justify-between text-gray-400">
+                <span class="text-[11px] uppercase tracking-widest">State of Health</span>
+                <span class="text-primary"><i class="fa-solid fa-heart"></i></span>
+            </div>
+            <div class="mt-2 flex items-baseline gap-1 font-mono text-white">
+                <span class="text-2xl font-semibold tabular-nums" id="metric-soh">--.-</span>
+                <span class="text-xs text-gray-400">%</span>
+            </div>
+        </div>
+
+        <!-- Metric 6: Battery Health Score -->
+        <div class="glass-card p-4">
+            <div class="flex items-center justify-between text-gray-400">
+                <span class="text-[11px] uppercase tracking-widest">Battery Health</span>
+                <span class="text-primary"><i class="fa-solid fa-gauge"></i></span>
+            </div>
+            <div class="mt-2 flex items-baseline gap-1 font-mono text-white">
+                <span class="text-2xl font-semibold tabular-nums" id="metric-health">--</span>
+                <span class="text-xs text-gray-400">/100</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECONDARY METRICS GRID: Power, Humidity, Efficiency -->
+    <section class="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <!-- Power -->
+        <div class="glass-card p-4">
+            <div class="flex items-center justify-between text-gray-400">
+                <span class="text-[11px] uppercase tracking-widest">Power Output</span>
+                <span class="text-primary"><i class="fa-solid fa-plug-circle-bolt"></i></span>
+            </div>
+            <div class="mt-2 flex items-baseline gap-1 font-mono text-white">
+                <span class="text-2xl font-semibold tabular-nums" id="metric-power">--.-</span>
+                <span class="text-xs text-gray-400">kW</span>
+            </div>
+        </div>
+        <!-- Humidity -->
+        <div class="glass-card p-4">
+            <div class="flex items-center justify-between text-gray-400">
+                <span class="text-[11px] uppercase tracking-widest">Humidity</span>
+                <span class="text-primary"><i class="fa-solid fa-droplet"></i></span>
+            </div>
+            <div class="mt-2 flex items-baseline gap-1 font-mono text-white">
+                <span class="text-2xl font-semibold tabular-nums" id="metric-humidity">--.-</span>
+                <span class="text-xs text-gray-400">%</span>
+            </div>
+        </div>
+        <!-- Cell Temperature Difference -->
+        <div class="glass-card p-4">
+            <div class="flex items-center justify-between text-gray-400">
+                <span class="text-[11px] uppercase tracking-widest">Cell ΔT</span>
+                <span class="text-primary"><i class="fa-solid fa-temperature-half"></i></span>
+            </div>
+            <div class="mt-2 flex items-baseline gap-1 font-mono text-white">
+                <span class="text-2xl font-semibold tabular-nums" id="metric-cell-delta">--.-</span>
+                <span class="text-xs text-gray-400">°C</span>
+            </div>
+        </div>
+
+        <!-- Efficiency -->
+        <div class="glass-card p-4">
+            <div class="flex items-center justify-between text-gray-400">
+                <span class="text-[11px] uppercase tracking-widest">Efficiency</span>
+                <span class="text-primary"><i class="fa-solid fa-chart-pie"></i></span>
+            </div>
+            <div class="mt-2 flex items-baseline gap-1 font-mono text-white">
+                <span class="text-2xl font-semibold tabular-nums" id="metric-eff">--.-</span>
+                <span class="text-xs text-gray-400">%</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- MIDDLE ROW: VISUALIZATION, ACTUATORS & COMPLIANCE RULES -->
+    <section class="mt-6 grid gap-4 lg:grid-cols-3">
+        
+        <!-- CARD 1: BATTERY VISUALIZATION -->
+        <div class="glass-card p-5">
+            <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
+                <span class="text-primary"><i class="fa-solid fa-battery-three-quarters"></i></span>Battery Visualization
+            </div>
+            <div class="mt-4 flex items-center gap-5">
+                <div class="relative flex h-44 w-24 flex-col-reverse overflow-hidden rounded-xl border-2 border-border bg-black/40 battery-simulator" id="twin-battery-box">
+                    <!-- Battery charge fluid display -->
+                    <div class="w-full transition-all duration-700 ease-out" style="height:0%; background:linear-gradient(180deg, var(--color-primary, #00f2fe), var(--color-primary, #00f2fe) 88%)" id="battery-fill-bar"></div>
+                    
+                    <div class="absolute inset-0 grid grid-rows-5">
+                        <div class="border-t border-border/20"></div>
+                        <div class="border-t border-border/20"></div>
+                        <div class="border-t border-border/20"></div>
+                        <div class="border-t border-border/20"></div>
+                        <div class="border-t border-border/20"></div>
+                    </div>
+                    <div class="absolute left-1/2 top-2 -translate-x-1/2 text-xs font-mono font-semibold text-white/90" id="battery-fill-percent">--%</div>
+                </div>
+                
+                <div class="flex-1 space-y-2 font-mono text-xs text-white">
+                    <div class="flex justify-between border-b border-border/20 pb-1">
+                        <span class="text-gray-400 font-sans">State of Charge</span><span id="txt-soc">--.- %</span>
+                    </div>
+                    <div class="flex justify-between border-b border-border/20 pb-1">
+                        <span class="text-gray-400 font-sans">State of Health</span><span id="txt-soh">--.- %</span>
+                    </div>
+                    <div class="flex justify-between border-b border-border/20 pb-1">
+                        <span class="text-gray-400 font-sans">Pack Voltage</span><span id="txt-voltage">--.-- V</span>
+                    </div>
+                    <div class="flex justify-between border-b border-border/20 pb-1">
+                        <span class="text-gray-400 font-sans">Cell Voltage</span><span id="txt-cell-voltage">--.-- V</span>
+                    </div>
+                    <div class="flex justify-between border-b border-border/20 pb-1">
+                        <span class="text-gray-400 font-sans">Current</span><span id="txt-current">--.-- A</span>
+                    </div>
+                    <div class="flex justify-between border-b border-border/20 pb-1">
+                        <span class="text-gray-400 font-sans">Temperature</span><span id="txt-temp">--.- C</span>
+                    </div>
+                    <div class="flex justify-between border-b border-border/20 pb-1">
+                        <span class="text-gray-400 font-sans">Power</span><span id="txt-power">--.-- W</span>
+                    </div>
+                    <div class="flex justify-between border-b border-border/20 pb-1">
+                        <span class="text-gray-400 font-sans">Efficiency</span><span id="txt-eff">--.- %</span>
+                    </div>
+                    <div class="flex justify-between border-b border-border/20 pb-1">
+                        <span class="text-gray-400 font-sans">Load</span><span id="txt-load" style="color:#34d399">Connected</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CARD 2: HARDWARE ACTUATORS -->
+        <div class="glass-card p-5">
+            <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
+                <span class="text-primary"><i class="fa-solid fa-power-off"></i></span>Hardware Actuators
+            </div>
+            <div class="mt-4 grid grid-cols-2 gap-3">
+                <!-- Cooling Fan Status block -->
+                <div class="flex items-center gap-3 rounded-lg p-3 ring-1 bg-black/10 text-gray-300 ring-border" id="card-actuator-fan">
+                    <div class="grid h-9 w-9 place-items-center rounded-md bg-black/30">
+                        <i class="fa-solid fa-fan text-sm text-primary" id="icon-actuator-fan"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-[10px] uppercase tracking-widest text-gray-400">Cooling Fan</div>
+                        <div class="font-mono text-sm font-semibold" id="val-actuator-fan">OFF</div>
+                    </div>
+                </div>
+                
+                <!-- Safety Relay Status block -->
+                <div class="flex items-center gap-3 rounded-lg p-3 ring-1 bg-primary/20 text-primary ring-primary/40" id="card-actuator-relay">
+                    <div class="grid h-9 w-9 place-items-center rounded-md bg-black/30">
+                        <i class="fa-solid fa-bolt text-sm" id="icon-actuator-relay"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-[10px] uppercase tracking-widest text-gray-400">Relay (Load)</div>
+                        <div class="font-mono text-sm font-semibold" id="val-actuator-relay">ON</div>
+                    </div>
+                </div>
+
+                <!-- Buzzer Siren Status block -->
+                <div class="flex items-center gap-3 rounded-lg p-3 ring-1 bg-black/10 text-gray-300 ring-border" id="card-actuator-buzzer">
+                    <div class="grid h-9 w-9 place-items-center rounded-md bg-black/30">
+                        <i class="fa-solid fa-volume-high text-sm" id="icon-actuator-buzzer"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-[10px] uppercase tracking-widest text-gray-400">Buzzer</div>
+                        <div class="font-mono text-sm font-semibold" id="val-actuator-buzzer">OFF</div>
+                    </div>
+                </div>
+
+                <!-- Three LED visualizer circles -->
+                <div class="flex items-center gap-3 rounded-lg bg-black/10 p-3 ring-1 ring-border">
+                    <div class="flex flex-col gap-1.5" id="led-container">
+                        <div class="h-3.5 w-3.5 rounded-full transition-all opacity-25" style="background-color:#ef4444;" id="led-red"></div>
+                        <div class="h-3.5 w-3.5 rounded-full transition-all opacity-25" style="background-color:#f59e0b;" id="led-yellow"></div>
+                        <div class="h-3.5 w-3.5 rounded-full transition-all opacity-100 shadow-[0_0_10px_#10b981]" style="background-color:#10b981;" id="led-green"></div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] uppercase tracking-widest text-gray-400">Status LEDs</div>
+                        <div class="font-mono text-sm font-semibold text-white" id="val-actuator-led">GREEN</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CARD 3: SELF-HEALING LOGIC RULES -->
+        <div class="glass-card p-5">
+            <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
+                <span class="text-primary"><i class="fa-solid fa-heart-pulse"></i></span>Self-Healing Logic
+            </div>
+            <ul class="mt-4 space-y-2.5 font-mono text-xs text-white">
+                <li class="flex items-center gap-2">
+                    <span class="h-2 w-2 rounded-full bg-primary" id="chk-dot-temp-warn"></span>
+                    <span>Temp &lt; 40°C (warning)</span>
+                    <span class="ml-auto text-gray-400" id="chk-lbl-temp-warn">OK</span>
+                </li>
+                <li class="flex items-center gap-2">
+                    <span class="h-2 w-2 rounded-full bg-primary" id="chk-dot-temp-crit"></span>
+                    <span>Temp &lt; 45°C (critical)</span>
+                    <span class="ml-auto text-gray-400" id="chk-lbl-temp-crit">OK</span>
+                </li>
+                <li class="flex items-center gap-2">
+                    <span class="h-2 w-2 rounded-full bg-primary" id="chk-dot-volt"></span>
+                    <span>Pack voltage 320–420 V normal</span>
+                    <span class="ml-auto text-gray-400" id="chk-lbl-volt">OK</span>
+                </li>
+                <li class="flex items-center gap-2">
+                    <span class="h-2 w-2 rounded-full bg-primary" id="chk-dot-current"></span>
+                    <span>Current ≤ 200 A normal</span>
+                    <span class="ml-auto text-gray-400" id="chk-lbl-current">OK</span>
+                </li>
+            </ul>
+            <p class="mt-4 text-[11px] leading-relaxed text-gray-400 font-sans">When a rule trips, the twin auto-commands the ESP32 — fan ON, relay OPEN to isolate the load, or buzzer + red LED for a critical fault.</p>
+        </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- FUTURE SCOPE & NEXT-GEN EV BMS SUITE (SLIDE 9 IMPLEMENTATION)       -->
+    <!-- ==================================================================== -->
+    <section class="mt-8 space-y-6" id="future-scope-suite">
+
+
+
+        <!-- INTERACTIVE FUTURE SCOPE WIDGETS GRID -->
+        <div class="grid gap-6 lg:grid-cols-2">
+
+            <!-- WIDGET 1: MULTI-CELL PACK SIMULATION & CELL BALANCING MATRIX (Points 1 & 2) -->
+            <div class="glass-card p-5">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+                    <div>
+                        <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-400">
+                            <i class="fa-solid fa-table-cells"></i> Multi-Cell Matrix &amp; Cell Balancing
+                        </div>
+                        <p class="text-[11px] text-gray-400">Live 16-Cell sub-module telemetry with automated passive bleed balancing.</p>
+                    </div>
+                    <div class="flex items-center gap-1.5 rounded-lg bg-black/40 p-1 border border-border/20 text-xs">
+                        <button id="btn-balance-auto" onclick="setCellBalancingMode('auto')" class="rounded px-2.5 py-1 text-[10px] font-bold uppercase transition bg-primary text-gray-900">AUTO</button>
+                        <button id="btn-balance-on" onclick="setCellBalancingMode('on')" class="rounded px-2.5 py-1 text-[10px] font-bold uppercase transition text-gray-400 hover:text-white">FORCE ON</button>
+                        <button id="btn-balance-off" onclick="setCellBalancingMode('off')" class="rounded px-2.5 py-1 text-[10px] font-bold uppercase transition text-gray-400 hover:text-white">OFF</button>
+                    </div>
+                </div>
+
+                <!-- Matrix Live Stats -->
+                <div class="grid grid-cols-3 gap-3 mb-4 font-mono text-xs">
+                    <div class="rounded-lg bg-black/40 p-2.5 border border-border/20 text-center">
+                        <div class="text-[9px] uppercase tracking-wider text-gray-400">Cell Delta (ΔV)</div>
+                        <div class="text-sm font-bold text-cyan-400" id="val-cell-delta">-- mV</div>
+                    </div>
+                    <div class="rounded-lg bg-black/40 p-2.5 border border-border/20 text-center">
+                        <div class="text-[9px] uppercase tracking-wider text-gray-400">Cell V Range</div>
+                        <div class="text-xs font-semibold text-white" id="val-cell-range">-- V</div>
+                    </div>
+                    <div class="rounded-lg bg-black/40 p-2.5 border border-border/20 text-center">
+                        <div class="text-[9px] uppercase tracking-wider text-gray-400">Balancing Status</div>
+                        <div class="text-xs font-semibold text-emerald-400" id="val-cell-status">BALANCED</div>
+                    </div>
+                </div>
+
+                <!-- 16-Cell Grid Matrix -->
+                <div class="grid grid-cols-4 gap-2 text-xs font-mono" id="cell-matrix-grid">
+                    <!-- Populated dynamically via JS -->
+                </div>
+            </div>
+
+            <!-- WIDGET 2: ADVANCED SOC ESTIMATION SUITE (Point 3) -->
+            <div class="glass-card p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-400">
+                            <i class="fa-solid fa-chart-diagram"></i> Advanced SOC Estimation
+                        </div>
+                        <p class="text-[11px] text-gray-400">Comparison between OCV Linear, Coulomb Counting, and Extended Kalman Filter (EKF).</p>
+                    </div>
+                    <span class="rounded bg-cyan-500/10 px-2 py-1 text-[10px] font-mono text-cyan-400 border border-cyan-500/20">EKF ±0.3% Precision</span>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3 font-mono text-center mb-4">
+                    <!-- OCV Linear -->
+                    <div class="rounded-xl border border-border/30 bg-black/30 p-3">
+                        <div class="text-[10px] text-gray-400 uppercase">Linear OCV</div>
+                        <div class="text-lg font-bold text-gray-200 mt-1" id="soc-val-linear">-- %</div>
+                        <div class="text-[9px] text-gray-500 mt-1">Basic V-lookup</div>
+                    </div>
+                    <!-- Coulomb Counting -->
+                    <div class="rounded-xl border border-border/30 bg-black/30 p-3">
+                        <div class="text-[10px] text-gray-400 uppercase">Coulomb Count</div>
+                        <div class="text-lg font-bold text-amber-400 mt-1" id="soc-val-coulomb">-- %</div>
+                        <div class="text-[9px] text-gray-500 mt-1">Ah Integration</div>
+                    </div>
+                    <!-- Extended Kalman Filter -->
+                    <div class="rounded-xl border border-cyan-400/30 bg-cyan-950/20 p-3">
+                        <div class="text-[10px] text-cyan-400 font-bold uppercase">EKF Estimator</div>
+                        <div class="text-lg font-bold text-cyan-300 mt-1" id="soc-val-ekf">-- %</div>
+                        <div class="text-[9px] text-cyan-400/70 mt-1">Dynamic State Noise</div>
+                    </div>
+                </div>
+
+                <!-- EKF State Parameters -->
+                <div class="rounded-xl border border-border/30 bg-black/20 p-3 font-mono text-xs space-y-2">
+                    <div class="flex justify-between text-gray-300">
+                        <span>Kalman Gain Matrix (K):</span>
+                        <span class="text-cyan-400 font-semibold" id="ekf-gain-k">0.042</span>
+                    </div>
+                    <div class="flex justify-between text-gray-300">
+                        <span>State Covariance Error (P):</span>
+                        <span class="text-emerald-400 font-semibold">1.2e-4 (Converged)</span>
+                    </div>
+                    <div class="flex justify-between text-gray-300">
+                        <span>Measurement Noise Covariance (R):</span>
+                        <span class="text-gray-400">0.015 V²</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WIDGET 3: SOH &amp; RUL DEGRADATION PREDICTIVE ENGINE (Points 4 &amp; 5) -->
+            <div class="glass-card p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-400">
+                            <i class="fa-solid fa-timeline-arrow"></i> SOH &amp; RUL Predictive Analytics
+                        </div>
+                        <p class="text-[11px] text-gray-400">Arrhenius degradation modeling projecting remaining cycles to 70% EOL.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-xs mb-4">
+                    <div class="rounded-lg bg-black/30 p-2.5 border border-border/20">
+                        <div class="text-[9px] uppercase text-gray-400">SOH Health</div>
+                        <div class="text-sm font-bold text-emerald-400" id="rul-val-soh">-- %</div>
+                    </div>
+                    <div class="rounded-lg bg-black/30 p-2.5 border border-border/20">
+                        <div class="text-[9px] uppercase text-gray-400">Rem. Cycles</div>
+                        <div class="text-sm font-bold text-cyan-400" id="rul-val-cycles">-- cycles</div>
+                    </div>
+                    <div class="rounded-lg bg-black/30 p-2.5 border border-border/20">
+                        <div class="text-[9px] uppercase text-gray-400">Est. Range</div>
+                        <div class="text-sm font-bold text-purple-400" id="rul-val-km">-- km</div>
+                    </div>
+                    <div class="rounded-lg bg-black/30 p-2.5 border border-border/20">
+                        <div class="text-[9px] uppercase text-gray-400">Rint Growth</div>
+                        <div class="text-sm font-bold text-amber-400" id="rul-val-rint">+0.4%</div>
+                    </div>
+                </div>
+
+                <!-- RUL Degradation Projection Chart -->
+                <div class="chart-container h-44">
+                    <canvas id="rulChart"></canvas>
+                </div>
+            </div>
+
+            <!-- WIDGET 4: MACHINE LEARNING / EDGE AI ANOMALY DETECTOR (Point 6) -->
+            <div class="glass-card p-5 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-400">
+                                <i class="fa-solid fa-microchip"></i> Edge AI / TinyML Anomaly Detector
+                            </div>
+                            <p class="text-[11px] text-gray-400">Real-time Isolation Forest + Neural Autoencoder evaluating safety envelopes.</p>
+                        </div>
+                        <button onclick="triggerAIScan()" class="rounded-md bg-cyan-500/20 px-3 py-1.5 text-xs font-mono text-cyan-300 hover:bg-cyan-500/30 border border-cyan-500/30 transition">
+                            <i class="fa-solid fa-arrows-rotate mr-1"></i> Run AI Scan
+                        </button>
+                    </div>
+
+                    <!-- AI Anomaly Score Gauge -->
+                    <div class="rounded-xl border border-border/30 bg-black/30 p-4 mb-4">
+                        <div class="flex items-center justify-between">
+                            <div class="text-xs uppercase font-mono text-gray-400">AI Anomaly Index</div>
+                            <div class="text-sm font-mono font-bold text-emerald-400" id="ai-anomaly-status">NOMINAL (0.02)</div>
+                        </div>
+                        <div class="mt-2 h-3 w-full overflow-hidden rounded-full bg-black/60 border border-border/20">
+                            <div id="ai-anomaly-progress" class="h-full rounded-full bg-emerald-500 transition-all duration-500" style="width: 2%"></div>
+                        </div>
+                        <div class="mt-1 flex justify-between text-[9px] font-mono text-gray-500">
+                            <span>0.0 (Nominal)</span><span>0.3 (Elevated)</span><span>0.6 (Critical)</span><span>1.0</span>
+                        </div>
+                    </div>
+
+                    <!-- Risk Indicators Grid -->
+                    <div class="grid grid-cols-3 gap-2 font-mono text-xs">
+                        <div class="rounded-lg bg-black/30 p-2.5 border border-border/20 text-center">
+                            <div class="text-[9px] text-gray-400 uppercase">Thermal Runaway</div>
+                            <div class="text-xs font-bold text-emerald-400 mt-1" id="ai-val-thermal">0.2%</div>
+                        </div>
+                        <div class="rounded-lg bg-black/30 p-2.5 border border-border/20 text-center">
+                            <div class="text-[9px] text-gray-400 uppercase">Micro-Short</div>
+                            <div class="text-xs font-bold text-emerald-400 mt-1" id="ai-val-microshort">NONE</div>
+                        </div>
+                        <div class="rounded-lg bg-black/30 p-2.5 border border-border/20 text-center">
+                            <div class="text-[9px] text-gray-400 uppercase">Impedance Spike</div>
+                            <div class="text-xs font-bold text-emerald-400 mt-1" id="ai-val-impedance">CLEAR</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Diagnostic Notes -->
+                <div class="mt-4 rounded-lg bg-cyan-950/20 p-2.5 border border-cyan-800/30 text-[10px] text-cyan-300 font-mono">
+                    <i class="fa-solid fa-circle-info mr-1 text-cyan-400"></i>
+                    <span id="ai-diagnostic-note">AI Baseline Model: Telemetry parameters operating within nominal multi-cell neural envelope.</span>
+                </div>
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- TREND LINES PLOTS (3 Canvas Grids) -->
+    <section class="mt-6 grid gap-4 lg:grid-cols-3">
+        <!-- Temperature Trend -->
+        <div class="glass-card p-5">
+            <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400 mb-3">
+                <span class="text-primary"><i class="fa-solid fa-chart-line"></i></span>Temperature (°C)
+            </div>
+            <div class="chart-container">
+                <canvas id="tempChart"></canvas>
+            </div>
+            <div class="mt-2 flex gap-3 font-mono text-[10px] text-gray-400">
+                <span>warn ≥ 40</span><span class="text-red-400">crit ≥ 45</span>
+            </div>
+        </div>
+        
+        <!-- Voltage Trend -->
+        <div class="glass-card p-5">
+            <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400 mb-3">
+                <span class="text-primary"><i class="fa-solid fa-chart-line"></i></span>Voltage (V)
+            </div>
+            <div class="chart-container">
+                <canvas id="voltageChart"></canvas>
+            </div>
+            <div class="mt-2 flex gap-3 font-mono text-[10px] text-gray-400">
+                <span>normal: 320V - 420V</span>
+            </div>
+        </div>
+
+        <!-- Current Trend -->
+        <div class="glass-card p-5">
+            <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400 mb-3">
+                <span class="text-primary"><i class="fa-solid fa-chart-line"></i></span>Current (A)
+            </div>
+            <div class="chart-container">
+                <canvas id="currentChart"></canvas>
+            </div>
+            <div class="mt-2 flex gap-3 font-mono text-[10px] text-gray-400">
+                <span class="text-red-400">high >200 / crit >300</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- SYSTEM MANUAL OVERRIDES & EVENT LOGS -->
+    <section class="mt-6 grid gap-4 lg:grid-cols-3">
+        
+        <!-- CARD A: MANUAL COMMANDS AUTO/ON/OFF SELECTORS -->
+        <div class="glass-card p-5">
+            <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400 mb-4">
+                <span class="text-primary"><i class="fa-solid fa-sliders"></i></span>Manual Commands
+            </div>
+            <div class="space-y-4 text-sm text-white">
+                <!-- Fan Mode Selectors -->
+                <div>
+                    <div class="mb-1 text-[10px] uppercase tracking-widest text-gray-400 font-bold">Cooling Fan</div>
+                    <div class="flex rounded-md bg-black/40 p-1 border border-border/20">
+                        <button id="btn-fan-auto" class="flex-1 rounded py-1 text-xs font-semibold uppercase tracking-wider transition bg-primary text-gray-900" onclick="setActuatorMode('fan', 'auto')">auto</button>
+                        <button id="btn-fan-on" class="flex-1 rounded py-1 text-xs font-semibold uppercase tracking-wider transition text-gray-400 hover:text-white" onclick="setActuatorMode('fan', 'on')">on</button>
+                        <button id="btn-fan-off" class="flex-1 rounded py-1 text-xs font-semibold uppercase tracking-wider transition text-gray-400 hover:text-white" onclick="setActuatorMode('fan', 'off')">off</button>
+                    </div>
+                </div>
+                
+                <!-- Relay Mode Selectors -->
+                <div>
+                    <div class="mb-1 text-[10px] uppercase tracking-widest text-gray-400 font-bold">Relay (Load)</div>
+                    <div class="flex rounded-md bg-black/40 p-1 border border-border/20">
+                        <button id="btn-relay-auto" class="flex-1 rounded py-1 text-xs font-semibold uppercase tracking-wider transition bg-primary text-gray-900" onclick="setActuatorMode('relay', 'auto')">auto</button>
+                        <button id="btn-relay-on" class="flex-1 rounded py-1 text-xs font-semibold uppercase tracking-wider transition text-gray-400 hover:text-white" onclick="setActuatorMode('relay', 'on')">on</button>
+                        <button id="btn-relay-off" class="flex-1 rounded py-1 text-xs font-semibold uppercase tracking-wider transition text-gray-400 hover:text-white" onclick="setActuatorMode('relay', 'off')">off</button>
+                    </div>
+                </div>
+
+                <!-- Alarm Reset Command -->
+                <button class="flex w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-wider transition bg-[#080d16] hover:bg-black/50 border border-border/40 text-white mt-4" onclick="triggerResetAlarm()">
+                    <i class="fa-solid fa-bell-slash text-xs text-amber-400"></i> Mute / Reset Alarm
+                </button>
+                <p class="text-[10px] text-gray-400 leading-normal mt-2">Commands flow: Dashboard → Server → ESP32 → Relay / Fan / Buzzer.</p>
+            </div>
+        </div>
+
+        <!-- CARD B: INTERACTIVE TELEMETRY SLIDERS -->
+        <div class="glass-card p-5">
+            <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400 mb-4">
+                <span class="text-primary"><i class="fa-solid fa-bug"></i></span>Fault Injector (Viva Demo)
+            </div>
+            <div class="space-y-4 text-sm text-white">
+                <!-- Load Demand Slider -->
+                <div>
+                    <div class="mb-1 flex justify-between text-[10px] uppercase tracking-widest text-gray-400">
+                        <span>Load demand</span><span class="font-mono text-primary" id="lbl-slide-load">40%</span>
+                    </div>
+                    <input type="range" min="0" max="1" step="0.05" class="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-black/40 border border-border/30 accent-primary" value="0.4" id="slide-load" oninput="updateSliders()"/>
+                </div>
+                
+                <!-- Ambient Temperature Slider -->
+                <div>
+                    <div class="mb-1 flex justify-between text-[10px] uppercase tracking-widest text-gray-400">
+                        <span>Ambient temp</span><span class="font-mono text-primary" id="lbl-slide-temp">28°C</span>
+                    </div>
+                    <input type="range" min="15" max="45" step="1" class="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-black/40 border border-border/30 accent-primary" value="28" id="slide-temp" oninput="updateSliders()"/>
+                </div>
+                
+                <!-- Fault Injection triggers -->
+                <div>
+                    <div class="mb-1 text-[10px] uppercase tracking-widest text-gray-400">Inject fault</div>
+                    <div class="flex rounded-md bg-black/40 p-1 border border-border/20">
+                        <button id="btn-fault-none" class="flex-1 rounded py-1 text-[11px] font-semibold uppercase tracking-wider transition bg-primary text-gray-900" onclick="injectFault('none')">none</button>
+                        <button id="btn-fault-overheat" class="flex-1 rounded py-1 text-[11px] font-semibold uppercase tracking-wider transition text-gray-400 hover:text-white" onclick="injectFault('overheat')">overheat</button>
+                        <button id="btn-fault-overvolt" class="flex-1 rounded py-1 text-[11px] font-semibold uppercase tracking-wider transition text-gray-400 hover:text-white" onclick="injectFault('overvolt')">overvolt</button>
+                        <button id="btn-fault-overcurrent" class="flex-1 rounded py-1 text-[11px] font-semibold uppercase tracking-wider transition text-gray-400 hover:text-white" onclick="injectFault('overcurrent')">overcurrent</button>
+                    </div>
+                </div>
+                <p class="text-[10px] text-gray-400 leading-normal">Trigger a fault and watch the Digital Twin self-heal in under a second.</p>
+            </div>
+        </div>
+
+        <!-- CARD C: SYSTEM EVENT & ALERTS LIST -->
+        <div class="glass-card flex max-h-[340px] flex-col p-5">
+            <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400 mb-3">
+                <span class="text-primary"><i class="fa-solid fa-list-check"></i></span>Event &amp; Alert Log
+            </div>
+            <!-- Injected list elements -->
+            <ul class="flex-grow space-y-2 overflow-y-auto pr-1 font-mono text-[11px] text-gray-300" id="logs-list-container">
+                <li class="flex gap-2 border-b border-border/10 pb-1.5">
+                    <span class="text-gray-500">--:--:--</span>
+                    <span class="text-primary">•</span>
+                    <span class="flex-1">Awaiting logs...</span>
+                </li>
+            </ul>
+        </div>
+    </section>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Custom Dashboard controller script -->
+<script src="{{ url_for('static', filename='js/dashboard.js') }}?v=3"></script>
+{% endblock %}
+

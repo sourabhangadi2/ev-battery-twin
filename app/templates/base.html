@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EV Battery Digital Twin — Live Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <!-- PWA & Mobile Web App Meta Tags -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='img/logo.jpg') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/logo.jpg') }}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="EV Battery OS">
+    <meta name="theme-color" content="#05080c">
+    
+    <!-- Custom CSS Stylesheet -->
+    <link href="{{ url_for('static', filename='css/style.css') }}?v=4" rel="stylesheet">
+
+    <!-- Tailwind Config for exact themes colors -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Space Grotesk', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        primary: '#00f2fe',
+                        border: 'rgba(0, 242, 254, 0.12)',
+                        card: 'rgba(21, 38, 52, 0.8)',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="text-gray-100 min-h-screen flex flex-col font-sans">
+
+    <!-- NATIVE APP LAUNCH SPLASH SCREEN -->
+    <div id="pwa-splash-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#05080c] transition-opacity duration-700 pointer-events-none">
+        <div class="relative flex flex-col items-center">
+            <div class="absolute -inset-4 rounded-full bg-cyan-500/20 blur-xl animate-pulse"></div>
+            <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="EV Battery Logo" class="relative h-24 w-24 rounded-2xl border-2 border-cyan-400/60 shadow-[0_0_35px_rgba(0,242,254,0.5)] object-cover mb-4">
+            <h1 class="text-xl font-bold tracking-wide text-white">EV Battery Twin OS</h1>
+            <p class="text-xs text-cyan-400 font-mono mt-1">Self-Healing Digital Twin Engine</p>
+            <div class="mt-6 h-1 w-40 overflow-hidden rounded-full bg-black/60 border border-border/30">
+                <div class="h-full w-full rounded-full bg-cyan-400 animate-[pulse_1s_ease-in-out_infinite]"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sticky Navigation Header matching native app layout -->
+    <header class="sticky top-0 z-20 border-b border-border/60 bg-[#05080c]/85 backdrop-blur-xl">
+        <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-2.5 lg:px-8">
+            <div class="flex items-center gap-3">
+                <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="EV Battery Logo" class="h-9 w-9 rounded-xl border border-cyan-400/40 shadow-[0_0_12px_rgba(0,242,254,0.35)] object-cover">
+                <div>
+                    <div class="flex items-center gap-2 text-sm font-bold leading-tight text-white">
+                        EV Battery Twin OS
+                        <span class="rounded bg-cyan-500/20 px-1.5 py-0.2 text-[9px] font-mono text-cyan-300 border border-cyan-500/30">v4.2 PRO</span>
+                    </div>
+                    <div class="text-[10px] uppercase tracking-widest text-cyan-400/80 font-mono">Self-Healing Digital Twin</div>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3 font-mono text-xs">
+                <!-- ESP32 Connection status badge -->
+                <div class="flex items-center gap-1.5 bg-[#080d16] px-2.5 py-1 rounded-md border border-border">
+                    <span class="pulse-dot inline-block h-2 w-2 rounded-full bg-emerald-400" id="esp32-status-dot"></span>
+                    <i class="fa-solid fa-microchip text-gray-400"></i>
+                    <span class="text-gray-300 hidden sm:inline">ESP32</span>
+                </div>
+                <!-- Wi-Fi Link status badge -->
+                <div class="flex items-center gap-1.5 bg-[#080d16] px-2.5 py-1 rounded-md border border-border">
+                    <span class="pulse-dot inline-block h-2 w-2 rounded-full bg-emerald-400" id="wifi-status-dot"></span>
+                    <i class="fa-solid fa-wifi text-gray-400"></i>
+                    <span class="text-gray-300 hidden sm:inline">Wi-Fi</span>
+                </div>
+                <!-- Mobile Link button -->
+                <button type="button" onclick="openMobileModal()" class="flex items-center gap-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 px-2.5 py-1 rounded-md border border-cyan-500/30 text-cyan-300 transition" title="Open on Mobile / Scan QR Code">
+                    <i class="fa-solid fa-mobile-screen-button"></i>
+                    <span class="font-semibold hidden sm:inline">Mobile Link</span>
+                </button>
+                <!-- Fullscreen App Button -->
+                <button type="button" onclick="toggleFullscreenApp()" class="flex items-center gap-1.5 bg-black/40 hover:bg-black/60 px-2 py-1 rounded-md border border-border text-gray-300 transition" title="Toggle Native Fullscreen App Mode">
+                    <i class="fa-solid fa-expand text-xs"></i>
+                </button>
+                <!-- Buzzer Sound Audio Status Badge -->
+                <button type="button" onclick="toggleMuteBuzzerAudio()" class="flex items-center gap-1.5 cursor-pointer hover:opacity-90 transition-all" id="buzzer-audio-status" title="Click to mute/unmute buzzer sound">
+                    <span class="px-2 py-0.5 rounded bg-black/40 border border-border text-gray-400 text-[10px]">Sound Idle</span>
+                </button>
+                <!-- Real-time dynamic clock -->
+                <span class="hidden text-gray-400 sm:inline text-mono" id="header-clock">--:--:--</span>
+                
+                {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('main.logout') }}" class="text-red-400 hover:text-red-300 font-sans ml-2 text-[11px] uppercase tracking-wider font-semibold border border-red-500/20 px-2 py-1 rounded bg-red-500/5 hover:bg-red-500/10">
+                        <i class="fa-solid fa-power-off mr-1"></i> Logout
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content centered wrapper -->
+    <main class="flex-grow mx-auto w-full max-w-7xl px-4 py-6 lg:px-8">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, msg in messages %}
+                    <div class="flex items-center justify-between p-4 mb-6 rounded-lg text-sm bg-blue-500/10 text-blue-400 border border-blue-500/20" role="alert">
+                        <span>{{ msg }}</span>
+                        <button type="button" class="text-blue-400 font-bold" onclick="this.parentElement.remove()">×</button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto py-6 text-center text-xs text-gray-500 border-t border-white/5">
+        Self-Healing EV Battery Simulator · Digital Twin · ESP32 ⇄ Wi-Fi ⇄ Server
+    </footer>
+
+    <!-- Mobile Access Link Modal -->
+    <div id="mobile-access-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+        <div class="glass-card relative w-full max-w-md p-6 border border-cyan-500/30 text-center shadow-2xl">
+            <button onclick="closeMobileModal()" class="absolute top-3 right-3 text-gray-400 hover:text-white text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 mb-3">
+                <i class="fa-solid fa-mobile-screen-button text-xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white">Open on Mobile Devices</h3>
+            <p class="text-xs text-gray-400 mt-1">Scan QR code or open link below from any smartphone connected to the same Wi-Fi network.</p>
+
+            <!-- QR Code Container -->
+            <div class="my-4 flex justify-center">
+                <div class="rounded-xl border border-cyan-500/30 bg-[#05080c] p-3 shadow-inner">
+                    <img id="mobile-qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=http://10.131.70.175:5000&color=00f2fe&bcolor=05080c" alt="Scan to Open on Mobile" class="h-44 w-44 mx-auto rounded-lg">
+                </div>
+            </div>
+
+            <!-- Copyable URL Input -->
+            <div class="mt-3 flex items-center gap-2 rounded-lg bg-black/50 p-1.5 border border-border/40 font-mono text-xs">
+                <input id="mobile-url-input" type="text" readonly value="http://10.131.70.175:5000" class="flex-1 bg-transparent px-2 text-cyan-300 outline-none">
+                <button onclick="copyMobileUrl()" id="btn-copy-mobile-url" class="rounded bg-cyan-500/20 px-3 py-1.5 text-cyan-300 hover:bg-cyan-500/30 border border-cyan-500/30 font-sans font-semibold transition">
+                    <i class="fa-solid fa-copy mr-1"></i> Copy
+                </button>
+            </div>
+
+            <div class="mt-4 rounded-lg bg-cyan-950/20 p-3 text-[11px] text-gray-400 text-left font-mono">
+                <div class="text-cyan-400 font-bold mb-1"><i class="fa-solid fa-wifi mr-1"></i> Mobile Wi-Fi Instructions:</div>
+                <div>1. Connect your smartphone to the same Wi-Fi network as this PC.</div>
+                <div>2. Open Chrome, Safari, or point camera at the QR Code.</div>
+                <div class="mt-2 text-[10px] text-gray-500 border-t border-border/20 pt-1.5">
+                    🌐 <strong>Access From Anywhere (Cellular / Internet):</strong><br>
+                    Run <code class="text-cyan-300">npx localtunnel --port 5000</code> in terminal to get a public HTTPS web link.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Native Mobile App Bottom Navigation Bar (Visible on Mobile & Tablet screens) -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#05080c]/95 backdrop-blur-xl border-t border-cyan-500/20 px-2 py-2 flex items-center justify-around font-mono text-[10px] text-gray-400">
+        <a href="#" class="flex flex-col items-center gap-0.5 text-cyan-400 hover:text-white transition">
+            <i class="fa-solid fa-gauge-high text-sm"></i>
+            <span>Dash</span>
+        </a>
+        <a href="#ev-driving-simulation" class="flex flex-col items-center gap-0.5 hover:text-cyan-300 transition">
+            <i class="fa-solid fa-bolt text-sm"></i>
+            <span>Drive</span>
+        </a>
+        <a href="#future-scope-suite" class="flex flex-col items-center gap-0.5 hover:text-cyan-300 transition">
+            <i class="fa-solid fa-table-cells text-sm"></i>
+            <span>Matrix</span>
+        </a>
+        <a href="#logs-list-container" class="flex flex-col items-center gap-0.5 hover:text-cyan-300 transition">
+            <i class="fa-solid fa-list-check text-sm"></i>
+            <span>Logs</span>
+        </a>
+        <button onclick="installPWA()" class="flex flex-col items-center gap-0.5 text-amber-400 hover:text-amber-300 transition">
+            <i class="fa-solid fa-circle-down text-sm"></i>
+            <span>App</span>
+        </button>
+    </nav>
+
+    <!-- Bootstrap/Visual utilities scripts -->
+    <script>
+        function updateHeaderClock() {
+            const el = document.getElementById('header-clock');
+            if (el) {
+                const now = new Date();
+                el.innerText = now.toLocaleTimeString();
+            }
+        }
+        updateHeaderClock();
+        setInterval(updateHeaderClock, 1000);
+
+        async function openMobileModal() {
+            const modal = document.getElementById('mobile-access-modal');
+            if (modal) modal.classList.remove('hidden');
+            try {
+                const res = await fetch('/api/network_info');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.mobile_url) {
+                        const input = document.getElementById('mobile-url-input');
+                        if (input) input.value = data.mobile_url;
+                        const qr = document.getElementById('mobile-qr-img');
+                        if (qr) qr.src = data.qr_code_url;
+                    }
+                }
+            } catch(e) { console.warn('Mobile net info error:', e); }
+        }
+
+        function closeMobileModal() {
+            const modal = document.getElementById('mobile-access-modal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function copyMobileUrl() {
+            const input = document.getElementById('mobile-url-input');
+            if (input) {
+                input.select();
+                navigator.clipboard.writeText(input.value);
+                const btn = document.getElementById('btn-copy-mobile-url');
+                if (btn) {
+                    btn.innerHTML = '<i class="fa-solid fa-check mr-1"></i> Copied!';
+                    setTimeout(() => { btn.innerHTML = '<i class="fa-solid fa-copy mr-1"></i> Copy'; }, 2000);
+                }
+            }
+        }
+
+        // Register Service Worker for Progressive Web App (PWA)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then((reg) => console.log('PWA ServiceWorker registered:', reg.scope))
+                    .catch((err) => console.warn('PWA ServiceWorker failed:', err));
+            });
+        }
+
+        // Native PWA Splash Screen Auto-Dismiss
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const splash = document.getElementById('pwa-splash-screen');
+                if (splash) {
+                    splash.style.opacity = '0';
+                    setTimeout(() => splash.remove(), 700);
+                }
+            }, 600);
+        });
+
+        function toggleFullscreenApp() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => console.warn(err));
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        }
+
+        function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User installed EV Battery PWA');
+                    }
+                    deferredPrompt = null;
+                });
+            } else {
+                openMobileModal();
+            }
+        }
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>
+
